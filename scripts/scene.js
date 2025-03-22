@@ -18,6 +18,29 @@ const safeZoneMaterial = new THREE.MeshBasicMaterial({
 const safeZone = new THREE.Mesh(safeZoneGeometry, safeZoneMaterial);
 scene.add(safeZone);
 
+// Create player's spaceship
+const shipGeometry = new THREE.ConeGeometry(1, 2, 16);
+const shipMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+const playerShip = new THREE.Mesh(shipGeometry, shipMaterial);
+
+// Position ship randomly within safe zone
+playerShip.position.set(
+    (Math.random() - 0.5) * 40, // x: -20 to 20
+    (Math.random() - 0.5) * 40, // y: -20 to 20
+    (Math.random() - 0.5) * 40  // z: -20 to 20
+);
+
+// Rotate ship to point "forward" along its length
+playerShip.rotation.x = Math.PI / 2;
+scene.add(playerShip);
+
+// Create rotation axes for the ship
+const rotationAxes = new THREE.Group();
+rotationAxes.position.copy(playerShip.position);
+scene.add(rotationAxes);
+rotationAxes.add(playerShip);
+playerShip.position.set(0, 0, 0); // Reset position relative to rotationAxes
+
 // Position camera to see the entire arena
 camera.position.z = 100;
 
@@ -35,9 +58,79 @@ const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
+// Keyboard state
+const keyState = {
+    ArrowUp: false,
+    ArrowDown: false,
+    ArrowLeft: false,
+    ArrowRight: false,
+    w: false,
+    s: false,
+    a: false,
+    d: false,
+    ' ': false // Space key
+};
+
+// Keyboard event handlers
+window.addEventListener('keydown', (event) => {
+    if (keyState.hasOwnProperty(event.key)) {
+        keyState[event.key] = true;
+    }
+});
+
+window.addEventListener('keyup', (event) => {
+    if (keyState.hasOwnProperty(event.key)) {
+        keyState[event.key] = false;
+    }
+});
+
+// Ship control parameters
+const ROTATION_SPEED = 0.05;
+
+// Create quaternions for rotation
+const pitchQuaternion = new THREE.Quaternion();
+const yawQuaternion = new THREE.Quaternion();
+const tempQuaternion = new THREE.Quaternion();
+const rightVector = new THREE.Vector3(1, 0, 0);
+const upVector = new THREE.Vector3(0, 1, 0);
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
+    
+    // Handle ship rotation
+    let rotationOccurred = false;
+    
+    // Reset quaternions
+    pitchQuaternion.identity();
+    yawQuaternion.identity();
+    
+    // Pitch (up/down)
+    if (keyState.ArrowUp || keyState.w) {
+        pitchQuaternion.setFromAxisAngle(rightVector, -ROTATION_SPEED);
+        rotationOccurred = true;
+    }
+    if (keyState.ArrowDown || keyState.s) {
+        pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED);
+        rotationOccurred = true;
+    }
+    
+    // Yaw (left/right)
+    if (keyState.ArrowLeft || keyState.a) {
+        yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED);
+        rotationOccurred = true;
+    }
+    if (keyState.ArrowRight || keyState.d) {
+        yawQuaternion.setFromAxisAngle(upVector, -ROTATION_SPEED);
+        rotationOccurred = true;
+    }
+    
+    // Apply rotations if any occurred
+    if (rotationOccurred) {
+        tempQuaternion.copy(rotationAxes.quaternion);
+        rotationAxes.quaternion.multiply(yawQuaternion);
+        rotationAxes.quaternion.multiply(pitchQuaternion);
+    }
     
     // Slowly rotate the safe zone for better depth perception
     safeZone.rotation.y += 0.001;

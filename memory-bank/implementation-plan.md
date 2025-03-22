@@ -120,8 +120,8 @@ The tech stack is HTML/CSS/JS + Three.js, ensuring a lightweight, browser-based 
 * In physics.js, implement sphere collision detection (radius 1.5 units)
 * Apply the velocity exchange formula for collisions:
   ```
-  v1new = v1 - ((v1 - v2) * (p1 - p2)) / mod(p1 - p2) ^ 2) * (p1 - p2)
-  v2new = v2 - ((v1 - v2) * (p1 - p2)) / mod(p1 - p2) ^ 2) * (p1 - p2)
+  v1new = v1 - (((v1 - v2) * (p1 - p2)) / mod(p1 - p2) ^ 2) * (p1 - p2)
+  v2new = v2 - (((v1 - v2) * (p1 - p2)) / mod(p1 - p2) ^ 2) * (p1 - p2)
   ```
 * Add camera shake on collision (0.5 units amplitude, 0.3s duration)
 * **Test:** Ships should bounce realistically with proper visual feedback

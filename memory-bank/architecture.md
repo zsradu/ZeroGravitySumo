@@ -52,6 +52,7 @@ index.html
   - Renderer configuration
   - Animation loop handling
   - Window resize adaptation
+  - Player input handling
 - Key Components:
   - Scene: Root container for all 3D objects
   - Camera: Perspective camera with 75° FOV
@@ -59,6 +60,7 @@ index.html
   - Animation Loop: Maintains 60 FPS rendering
   - Safe Zone: Spherical boundary (radius 50) with transparency
   - Background: Star field for depth perception
+  - Input System: Keyboard state tracking for smooth controls
 
 ### Game Arena
 - **Safe Zone**:
@@ -71,7 +73,20 @@ index.html
   - Purpose: Provides depth perception and immersion
   - Distribution: Random points in 2000x2000x2000 cube
 
+### Player Ship
+- **Geometry**:
+  - Type: Cone (radius 1, height 2)
+  - Material: Solid green (#00FF00)
+  - Initial Position: Random within ±20 units
+  - Orientation: Rotated to point along length
+- **Controls**:
+  - Input: WASD/Arrow keys
+  - Rotation Speed: 0.05 radians/frame
+  - State Management: Key state object for smooth input
+  - (Planned) Thrust: Space key for forward movement
+
 ## Update History
 - Initial setup: Basic file structure and HTML5 boilerplate
 - Three.js Integration: Added 3D rendering capabilities and basic scene management
 - Game Arena: Implemented play area boundary and visual environment
+- Player Ship: Added player-controlled spaceship with rotation controls

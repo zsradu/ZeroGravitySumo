@@ -48,14 +48,31 @@
 ### Files Modified:
 1. `scripts/scene.js`: Replaced cube with game arena and added visual improvements
 
+## Step 4: Player Spaceship Creation (Completed)
+- Added player spaceship:
+  - Used ConeGeometry (radius 1, height 2)
+  - Applied green material (#00FF00)
+  - Initial random position within ±20 units
+  - Rotated to point along length (x-axis)
+- Implemented controls:
+  - WASD/Arrow keys for rotation
+  - Smooth rotation (0.05 rad/frame)
+  - Key state tracking for responsive input
+- Maintained existing features:
+  - Arena rotation
+  - Star field
+  - Window resizing
+
+### Files Modified:
+1. `scripts/scene.js`: Added player ship and keyboard controls
+
 ### Next Steps:
-- Proceed with Step 4: Create player's spaceship
-- Implement spaceship geometry and controls
-- Set up proper positioning within safe zone
+- Proceed with Step 5: Implement zero-gravity physics
+- Add thrust mechanics
+- Implement proper movement in zero-gravity
 
 ### Test Results:
-- Expected: Large wireframe green sphere visible in center
-- Expected: Sphere should be semi-transparent
-- Expected: Background should show white star points
-- Expected: Sphere should rotate slowly
-- Expected: Proper resize handling maintained
+- Expected: Green cone-shaped ship visible within arena
+- Expected: Ship should rotate smoothly with WASD/Arrow keys
+- Expected: Ship should maintain random starting position
+- Expected: Arena and background should remain visible
