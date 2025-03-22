@@ -15,8 +15,8 @@
 ### Scripts Directory (`/scripts`)
 - Purpose: Contains all JavaScript code for game logic
 - Files:
-  - `main.js`: Entry point for game initialization
-  - (Planned) `scene.js`: Three.js scene management
+  - `main.js`: Entry point for game initialization and dependency verification
+  - `scene.js`: Three.js scene management, rendering, and camera control
   - (Planned) `physics.js`: Game physics calculations
   - (Planned) `bots.js`: AI bot behavior
   - (Planned) `game.js`: Core game logic
@@ -37,11 +37,27 @@
 ## File Dependencies
 ```
 index.html
+├── three.min.js (CDN)
 ├── styles/main.css
-└── scripts/main.js
-    └── (future Three.js and other dependencies)
+└── scripts/
+    ├── scene.js
+    └── main.js
 ```
+
+## Component Architecture
+### Scene Management (`scene.js`)
+- Responsibilities:
+  - Three.js scene initialization
+  - Camera setup and management
+  - Renderer configuration
+  - Animation loop handling
+  - Window resize adaptation
+- Key Components:
+  - Scene: Root container for all 3D objects
+  - Camera: Perspective camera with 75° FOV
+  - Renderer: WebGL renderer with responsive canvas
+  - Animation Loop: Maintains 60 FPS rendering
 
 ## Update History
 - Initial setup: Basic file structure and HTML5 boilerplate
-- (Future updates will be logged here)
+- Three.js Integration: Added 3D rendering capabilities and basic scene management
