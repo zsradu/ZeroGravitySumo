@@ -4,7 +4,7 @@
 
 ### **Concept Summary**
 
-*Zero-Gravity Sumo* is a fast-paced, multiplayer game set in a zero-gravity space arena. Players control spaceships with the goal of pushing other players and AI-controlled bots out of a central "safe" zone while avoiding being pushed out themselves. The game features full 3D movement, a third-person camera, and a dynamic environment where players and bots can join or leave at any time, even mid-round. It’s designed to be simple, engaging, and replayable with minimalistic 3D visuals and intuitive controls.
+*Zero-Gravity Sumo* is a fast-paced, single-player game set in a zero-gravity space arena. The player controls a spaceship, aiming to push AI-controlled bots out of a central "safe" zone while avoiding elimination themselves. The game offers full 3D movement, a third-person camera, and a dynamic environment where bots can join or leave at any time, even mid-round. It’s designed to be simple, engaging, and replayable, with minimalistic 3D visuals and intuitive controls, simulating a multiplayer feel through bot interactions.
 
 ### **Target Audience**
 
@@ -14,7 +14,7 @@
   ### **Platform**
 
 * Web-based game, playable in browsers on desktop and mobile devices.  
-* Hosted as a static website (e.g., on GitHub Pages) with real-time communication handled by a third-party service (e.g., Pusher or Ably) for multiplayer syncing.  
+* Hosted as a static website (e.g., on GitHub Pages) requiring no real-time communication services since multiplayer is simulated with bots.  
   ---
 
   ## **2\. Gameplay Mechanics**
@@ -51,16 +51,16 @@
   * Boundary is clearly visible (e.g., a glowing edge).  
 * Rules for the safe zone:  
   * Players or bots outside the safe zone are eliminated.  
-  * Elimination removes the ship from the round, but new players/bots can join immediately.
+  * Elimination removes the ship from the round, but new bots can join immediately.
 
   ### **Multiplayer and Lobby System**
 
-* **Dynamic Joining/Exiting**:  
-  * Players can join the game at any time, even in the middle of a round.  
-  * Players can exit randomly (e.g., by closing the browser), reflecting natural user behavior.  
-* A lobby system supports multiple players in the same arena:  
-  * Real-time communication via a third-party service syncs player and bot positions.  
-  * AI bots fill in when there are fewer real players, maintaining a target of 6-8 ships in the arena.
+* **Fake Multiplayer**:  
+  * Only one real player per lobby; all other ships are AI bots.  
+  * Bots simulate a multiplayer environment, maintaining 6-8 ships in the arena.  
+  * No real-time communication with other players; all interactions are with bots.  
+* **Dynamic Lobby**:  
+  * Bots join and leave randomly to keep the arena lively.
 
   ### **AI Bot Behavior**
 
@@ -71,22 +71,21 @@
 * **Competitive Design**:  
   * Bots are challenging but not overly dominant, allowing skilled players to outmaneuver them.  
 * **Dynamic Joining/Exiting**:  
-  * Bots randomly enter or exit the game to simulate a living arena.  
-  * Frequency: A few changes per match (e.g., 1-2 bots join or leave per minute), avoiding excessive disruption.
+  * Bots enter or exit randomly (e.g., 1-2 changes per minute) to simulate a living arena without disrupting gameplay.
 
   ### **Game Flow and Rounds**
 
 * The game runs in continuous rounds with no strict start or end:  
   * Players and bots can be eliminated if outside the safe zone too long.  
-  * New players or bots can join at any time to keep the action going.  
-  * When the player starts a new round from a previous one, the timer starts from the start (2 minutes remaining). The first time a player joins a lobby, they enter somewhere in the first 20 seconds in an already existing match.  
+  * New bots can spawn at any time to keep the action going.  
+  * New players join an ongoing match (within the first 20 seconds of a round); subsequent rounds start with a 2-minute timer.  
 * Focus is on a lively, ongoing battle where users can jump in and out freely.
 
   ### **Win/Lose Conditions**
 
 * **Win**: Be the last ship remaining in the safe zone, or survive until the end of the round (two minutes).  
 * **Lose**: Be pushed out of the safe zone and eliminated.  
-* Elimination doesn’t end the game; the arena persists as others continue playing.
+* Elimination of the player ends the game. On the player’s side, there is at any point only one match being simulated.
 
   ### **Scoring and Session Progress**
 
@@ -150,7 +149,7 @@
   ### **General Requirements**
 
 * Runs entirely in the browser, client-side:  
-  * No server-side components beyond third-party real-time syncing.  
+  * No server-side components or real-time syncing.  
   * Progress and logic handled locally.  
 * No persistent data or accounts; resets on reload.
 
@@ -164,5 +163,6 @@
   ### **Deployment**
 
 * Static website, hostable on GitHub Pages.  
-* Works out of the box in a browser with minimal setup.  
-  
+* Works out of the box in a browser with minimal setup.
+
+

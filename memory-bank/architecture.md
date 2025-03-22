@@ -1,42 +1,47 @@
-# Project Architecture
+# Zero-Gravity Sumo Architecture
 
-## Directory Structure
-```
-ZeroGravitySumo/
-├── assets/           # Game assets (3D models, textures, sounds)
-├── scripts/         # JavaScript files for game logic
-├── styles/          # CSS files for UI styling
-└── index.html       # Main entry point
-```
+## Project Structure
 
-## File Purposes
+### Root Directory
+- `index.html`: Entry point for the game, loads all necessary resources and provides the game container
 
-### HTML Files
-- `index.html`: Main entry point for the game
-  - Loads all required scripts and styles
-  - Provides the container for the Three.js canvas
-  - Handles responsive viewport settings
+### Assets Directory (`/assets`)
+- Purpose: Stores all static assets used in the game
+- Contents:
+  - 3D models (GLTF/GLB format)
+  - Textures
+  - Other static resources
 
-### Script Files (Planned)
-- `scene.js`: Three.js scene setup and management
-- `physics.js`: Game physics and collision detection
-- `network.js`: Multiplayer networking via Pusher/Ably
-- `bots.js`: AI bot behavior and logic
-- `ui.js`: User interface management
-- `assets.js`: Asset loading and management
+### Scripts Directory (`/scripts`)
+- Purpose: Contains all JavaScript code for game logic
+- Files:
+  - `main.js`: Entry point for game initialization
+  - (Planned) `scene.js`: Three.js scene management
+  - (Planned) `physics.js`: Game physics calculations
+  - (Planned) `bots.js`: AI bot behavior
+  - (Planned) `game.js`: Core game logic
+  - (Planned) `ui.js`: User interface management
 
-### Style Files (Planned)
-- `main.css`: Main stylesheet for UI elements
-  - Game overlay styling
-  - Mobile/desktop responsive design
-  - Control interface layout
-
-### Asset Files (Planned)
-- `ship.glb`: 3D model for spaceships
-- Additional assets as needed
+### Styles Directory (`/styles`)
+- Purpose: Contains all CSS styling for the game
+- Files:
+  - `main.css`: Core styling and layout
+  - (Planned) Additional CSS modules for specific components
 
 ## Design Principles
 1. **Modularity**: Each JavaScript file handles a specific aspect of the game
-2. **Responsiveness**: UI adapts to both desktop and mobile
-3. **Performance**: Efficient asset loading and management
-4. **Scalability**: Easy to add new features or modify existing ones
+2. **Performance**: Static assets are optimized and loaded efficiently
+3. **Maintainability**: Clear separation of concerns between files
+4. **Scalability**: Directory structure supports future additions
+
+## File Dependencies
+```
+index.html
+├── styles/main.css
+└── scripts/main.js
+    └── (future Three.js and other dependencies)
+```
+
+## Update History
+- Initial setup: Basic file structure and HTML5 boilerplate
+- (Future updates will be logged here)
