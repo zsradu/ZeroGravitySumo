@@ -1,4 +1,4 @@
-## Project made entirely with AI generation, and "vibe coding", using Grok and Cursor.
+### Project made entirely with AI generation, and "vibe coding", using Grok and Cursor.
 
 # **Zero-Gravity Sumo Game**
 
