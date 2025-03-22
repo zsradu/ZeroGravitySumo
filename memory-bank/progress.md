@@ -66,13 +66,36 @@
 ### Files Modified:
 1. `scripts/scene.js`: Added player ship and keyboard controls
 
+## Step 5: Zero-Gravity Physics Implementation (Completed)
+- Created physics system with:
+  - Normal thrust (0.5 units/s²)
+  - Boost thrust (2.0 units/s²)
+  - Damping factor (0.99 per frame)
+  - Fixed time step (1/60 second)
+- Implemented thrust mechanics:
+  - Space key for normal thrust
+  - Double-tap Space for boost (2s duration, 10s cooldown)
+  - Proper velocity accumulation and damping
+- Integrated physics with ship movement:
+  - Forward thrust in ship's facing direction
+  - Momentum preservation in zero gravity
+  - Smooth acceleration and deceleration
+
+### Files Created:
+1. `scripts/physics.js`: Physics engine with thrust and zero-gravity mechanics
+
+### Files Modified:
+1. `scripts/scene.js`: Added physics integration and thrust controls
+2. `index.html`: Added physics.js script reference
+
 ### Next Steps:
-- Proceed with Step 5: Implement zero-gravity physics
-- Add thrust mechanics
-- Implement proper movement in zero-gravity
+- Proceed with Step 6: Add collision detection
+- Implement sphere collision detection
+- Add collision response with velocity exchange
 
 ### Test Results:
-- Expected: Green cone-shaped ship visible within arena
-- Expected: Ship should rotate smoothly with WASD/Arrow keys
-- Expected: Ship should maintain random starting position
-- Expected: Arena and background should remain visible
+- Expected: Ship should move forward when Space is held
+- Expected: Movement should continue after releasing Space
+- Expected: Velocity should gradually decrease due to damping
+- Expected: Boost should provide temporary speed increase
+- Expected: Ship should maintain proper orientation during movement

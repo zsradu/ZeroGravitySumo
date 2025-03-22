@@ -17,7 +17,7 @@
 - Files:
   - `main.js`: Entry point for game initialization and dependency verification
   - `scene.js`: Three.js scene management, rendering, and camera control
-  - (Planned) `physics.js`: Game physics calculations
+  - `physics.js`: Zero-gravity physics simulation and thrust mechanics
   - (Planned) `bots.js`: AI bot behavior
   - (Planned) `game.js`: Core game logic
   - (Planned) `ui.js`: User interface management
@@ -40,6 +40,7 @@ index.html
 ├── three.min.js (CDN)
 ├── styles/main.css
 └── scripts/
+    ├── physics.js
     ├── scene.js
     └── main.js
 ```
@@ -53,6 +54,7 @@ index.html
   - Animation loop handling
   - Window resize adaptation
   - Player input handling
+  - Physics integration
 - Key Components:
   - Scene: Root container for all 3D objects
   - Camera: Perspective camera with 75° FOV
@@ -61,6 +63,22 @@ index.html
   - Safe Zone: Spherical boundary (radius 50) with transparency
   - Background: Star field for depth perception
   - Input System: Keyboard state tracking for smooth controls
+
+### Physics System (`physics.js`)
+- **Core Mechanics**:
+  - Zero-gravity movement simulation
+  - Velocity-based motion
+  - Inertial dampening (0.99 factor)
+  - Fixed time step (1/60s)
+- **Thrust System**:
+  - Normal Thrust: 0.5 units/s² acceleration
+  - Boost Thrust: 2.0 units/s² acceleration
+  - Duration: 2 seconds boost, 10 seconds cooldown
+- **State Management**:
+  - Velocity tracking
+  - Thrust activation
+  - Boost timing
+  - Cooldown handling
 
 ### Game Arena
 - **Safe Zone**:
@@ -80,10 +98,16 @@ index.html
   - Initial Position: Random within ±20 units
   - Orientation: Rotated to point along length
 - **Controls**:
-  - Input: WASD/Arrow keys
+  - Input: WASD/Arrow keys for rotation
+  - Thrust: Space key for forward movement
+  - Boost: Space key during thrust
   - Rotation Speed: 0.05 radians/frame
   - State Management: Key state object for smooth input
-  - (Planned) Thrust: Space key for forward movement
+- **Physics Properties**:
+  - Mass: 1.0 unit (for future collision handling)
+  - Velocity: Managed by physics system
+  - Damping: 0.99 per frame
+  - Movement: Thrust-based in zero gravity
 
 ## Update History
 - Initial setup: Basic file structure and HTML5 boilerplate

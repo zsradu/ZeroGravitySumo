@@ -41,6 +41,9 @@ scene.add(rotationAxes);
 rotationAxes.add(playerShip);
 playerShip.position.set(0, 0, 0); // Reset position relative to rotationAxes
 
+// Initialize physics for the player's ship
+const shipPhysics = new Physics();
+
 // Position camera to see the entire arena
 camera.position.z = 100;
 
@@ -75,6 +78,11 @@ const keyState = {
 window.addEventListener('keydown', (event) => {
     if (keyState.hasOwnProperty(event.key)) {
         keyState[event.key] = true;
+        
+        // Handle boost activation
+        if (event.key === ' ') {
+            shipPhysics.tryBoost();
+        }
     }
 });
 
@@ -131,6 +139,16 @@ function animate() {
         rotationAxes.quaternion.multiply(yawQuaternion);
         rotationAxes.quaternion.multiply(pitchQuaternion);
     }
+    
+    // Handle thrust
+    if (keyState[' ']) {
+        shipPhysics.startThrust();
+    } else {
+        shipPhysics.stopThrust();
+    }
+    
+    // Update physics
+    shipPhysics.update(rotationAxes);
     
     // Slowly rotate the safe zone for better depth perception
     safeZone.rotation.y += 0.001;
