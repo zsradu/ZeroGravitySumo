@@ -3,6 +3,9 @@ const NORMAL_THRUST = 2.5;  // units/s²
 const BOOST_THRUST = 10.0;   // units/s²
 const DAMPING = 0.99;       // per frame
 const TIME_STEP = 1/60;     // 60 FPS
+const SHIP_RADIUS = 1.5;    // Collision sphere radius
+const COLLISION_SHAKE_AMPLITUDE = 0.5;
+const COLLISION_SHAKE_DURATION = 0.3;
 
 class Physics {
     constructor() {
@@ -13,6 +16,8 @@ class Physics {
         this.boostCooldown = 0;
         this.BOOST_DURATION = 2;     // seconds
         this.BOOST_COOLDOWN = 10;    // seconds
+        this.shakeTimeLeft = 0;      // Camera shake timer
+        this.lastCollisionTime = 0;  // Prevent multiple collisions in same frame
     }
 
     // Update physics for an object
@@ -41,11 +46,87 @@ class Physics {
             this.boostCooldown -= TIME_STEP;
         }
 
+        // Update shake timer
+        if (this.shakeTimeLeft > 0) {
+            this.shakeTimeLeft -= TIME_STEP;
+        }
+
         // Apply velocity to position
         object.position.addScaledVector(this.velocity, TIME_STEP);
 
         // Apply damping
         this.velocity.multiplyScalar(DAMPING);
+    }
+
+    // Check for collision with another physics object
+    checkCollision(object1, physics2, object2) {
+        // Get positions
+        const pos1 = object1.position.clone();
+        const pos2 = object2.position.clone();
+
+        // Calculate distance between centers
+        const distance = pos1.distanceTo(pos2);
+
+        // Check if collision occurred
+        if (distance < SHIP_RADIUS * 2) {
+            // Prevent multiple collisions in the same frame
+            const now = performance.now();
+            if (now - this.lastCollisionTime < 100) return false;
+            this.lastCollisionTime = now;
+
+            // Calculate collision normal (from ship2 to ship1)
+            const normal = pos1.clone().sub(pos2).normalize();
+
+            // Calculate relative velocity
+            const relativeVelocity = this.velocity.clone().sub(physics2.velocity);
+
+            // Calculate relative velocity along the normal
+            const velAlongNormal = relativeVelocity.dot(normal);
+
+            // If objects are moving apart, no collision response needed
+            if (velAlongNormal > 0) return false;
+
+            // Coefficient of restitution (1.0 = perfectly elastic)
+            const restitution = 0.8;
+
+            // Calculate impulse scalar
+            const j = -(1 + restitution) * velAlongNormal;
+            
+            // Since both masses are equal (1.0), we can simplify the impulse calculation
+            const impulse = normal.multiplyScalar(j * 0.5);
+
+            // Apply impulse to both objects
+            this.velocity.add(impulse);
+            physics2.velocity.sub(impulse);
+
+            // Slightly separate the objects to prevent sticking
+            const penetrationDepth = (SHIP_RADIUS * 2) - distance;
+            const separation = normal.clone().multiplyScalar(penetrationDepth * 0.5);
+            object1.position.add(separation);
+            object2.position.sub(separation);
+
+            // Start camera shake
+            this.shakeTimeLeft = COLLISION_SHAKE_DURATION;
+            physics2.shakeTimeLeft = COLLISION_SHAKE_DURATION;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // Get camera shake offset
+    getShakeOffset() {
+        if (this.shakeTimeLeft <= 0) return new THREE.Vector3(0, 0, 0);
+
+        const progress = this.shakeTimeLeft / COLLISION_SHAKE_DURATION;
+        const amplitude = COLLISION_SHAKE_AMPLITUDE * progress;
+        
+        return new THREE.Vector3(
+            (Math.random() - 0.5) * amplitude,
+            (Math.random() - 0.5) * amplitude,
+            (Math.random() - 0.5) * amplitude
+        );
     }
 
     // Start thrusting

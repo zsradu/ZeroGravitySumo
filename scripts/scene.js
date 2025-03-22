@@ -41,8 +41,21 @@ scene.add(rotationAxes);
 rotationAxes.add(playerShip);
 playerShip.position.set(0, 0, 0); // Reset position relative to rotationAxes
 
-// Initialize physics for the player's ship
+// Create test ship for collision testing
+const testShipGeometry = new THREE.ConeGeometry(1, 2, 16);
+const testShipMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const testShip = new THREE.Mesh(testShipGeometry, testShipMaterial);
+const testRotationAxes = new THREE.Group();
+
+// Position test ship
+testRotationAxes.position.set(5, 0, 0); // Place 5 units to the right of center
+testShip.rotation.x = Math.PI / 2;
+scene.add(testRotationAxes);
+testRotationAxes.add(testShip);
+
+// Initialize physics for both ships
 const shipPhysics = new Physics();
+const testShipPhysics = new Physics();
 
 // Position camera to see the entire arena
 camera.position.z = 100;
@@ -147,8 +160,21 @@ function animate() {
         shipPhysics.stopThrust();
     }
     
-    // Update physics
+    // Update physics for both ships
     shipPhysics.update(rotationAxes);
+    testShipPhysics.update(testRotationAxes);
+    
+    // Check for collisions
+    const collisionOccurred = shipPhysics.checkCollision(rotationAxes, testShipPhysics, testRotationAxes);
+    
+    // Apply camera shake if collision occurred
+    const playerShake = shipPhysics.getShakeOffset();
+    const testShake = testShipPhysics.getShakeOffset();
+    camera.position.set(
+        playerShake.x + testShake.x,
+        playerShake.y + testShake.y,
+        100 + playerShake.z + testShake.z
+    );
     
     // Slowly rotate the safe zone for better depth perception
     safeZone.rotation.y += 0.001;

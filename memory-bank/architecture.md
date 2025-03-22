@@ -55,6 +55,8 @@ index.html
   - Window resize adaptation
   - Player input handling
   - Physics integration
+  - Collision detection integration
+  - Visual effects (camera shake, stars)
 - Key Components:
   - Scene: Root container for all 3D objects
   - Camera: Perspective camera with 75° FOV
@@ -79,6 +81,10 @@ index.html
   - Thrust activation
   - Boost timing
   - Cooldown handling
+- **Collision Detection**:
+  - Sphere-based collision detection
+  - Velocity exchange on collision
+  - Camera shake effect for impact feedback
 
 ### Game Arena
 - **Safe Zone**:
@@ -108,9 +114,24 @@ index.html
   - Velocity: Managed by physics system
   - Damping: 0.99 per frame
   - Movement: Thrust-based in zero gravity
+- **Collision Response**:
+  - Sphere collision detection
+  - Elastic collision response
+  - Visual feedback through camera shake
+
+### Test Ship
+- **Geometry**:
+  - Type: Cone (radius 1, height 2)
+  - Material: Solid red color
+  - Physics properties:
+    - Mass: 1 unit
+    - Collision radius: 1 unit
+    - Static position for testing
 
 ## Update History
 - Initial setup: Basic file structure and HTML5 boilerplate
 - Three.js Integration: Added 3D rendering capabilities and basic scene management
 - Game Arena: Implemented play area boundary and visual environment
 - Player Ship: Added player-controlled spaceship with rotation controls
+- Implemented zero-gravity physics and thrust mechanics
+- Added collision detection system and test ship
