@@ -6,6 +6,7 @@ const TIME_STEP = 1/60;     // 60 FPS
 const SHIP_RADIUS = 1.5;    // Collision sphere radius
 const COLLISION_SHAKE_AMPLITUDE = 0.5;
 const COLLISION_SHAKE_DURATION = 0.3;
+const SAFE_ZONE_RADIUS = 50; // Arena boundary radius
 
 class Physics {
     constructor() {
@@ -18,6 +19,7 @@ class Physics {
         this.BOOST_COOLDOWN = 10;    // seconds
         this.shakeTimeLeft = 0;      // Camera shake timer
         this.lastCollisionTime = 0;  // Prevent multiple collisions in same frame
+        this.isOutOfBounds = false;  // Track if ship is out of bounds
     }
 
     // Update physics for an object
@@ -56,10 +58,19 @@ class Physics {
 
         // Apply damping
         this.velocity.multiplyScalar(DAMPING);
+
+        // Check if ship is outside safe zone
+        const distanceFromCenter = object.position.length();
+        this.isOutOfBounds = distanceFromCenter > SAFE_ZONE_RADIUS;
+
+        return !this.isOutOfBounds; // Return false if ship should be removed
     }
 
     // Check for collision with another physics object
     checkCollision(object1, physics2, object2) {
+        // Don't check collisions if either object is out of bounds
+        if (this.isOutOfBounds || physics2.isOutOfBounds) return false;
+
         // Get positions
         const pos1 = object1.position.clone();
         const pos2 = object2.position.clone();
@@ -161,5 +172,10 @@ class Physics {
             timeLeft: this.boostTimeLeft,
             cooldown: this.boostCooldown
         };
+    }
+
+    // Check if ship is out of bounds
+    isOutOfSafeZone() {
+        return this.isOutOfBounds;
     }
 } 

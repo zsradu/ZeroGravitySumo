@@ -3,6 +3,14 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
+// Camera following parameters
+const CAMERA_DISTANCE = 10;  // Units behind ship
+const CAMERA_HEIGHT = 5;     // Units above ship
+const CAMERA_POSITION_LERP = 0.1;  // Position smoothing
+const CAMERA_ROTATION_LERP = 0.05; // Rotation smoothing
+const TARGET_FRAMERATE = 60;
+const CAMERA_TIME_STEP = 1000 / TARGET_FRAMERATE; // 16.67ms for 60 FPS
+
 // Set renderer size and add to document
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -56,9 +64,6 @@ testRotationAxes.add(testShip);
 // Initialize physics for both ships
 const shipPhysics = new Physics();
 const testShipPhysics = new Physics();
-
-// Position camera to see the entire arena
-camera.position.z = 100;
 
 // Optional: Add some stars in the background for depth perception
 const starGeometry = new THREE.BufferGeometry();
@@ -115,66 +120,122 @@ const tempQuaternion = new THREE.Quaternion();
 const rightVector = new THREE.Vector3(1, 0, 0);
 const upVector = new THREE.Vector3(0, 1, 0);
 
+// Variables for frame timing
+let lastFrameTime = performance.now();
+let accumulator = 0;
+
+// Desired camera position and rotation
+const desiredCameraPosition = new THREE.Vector3();
+const desiredCameraRotation = new THREE.Quaternion();
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
     
-    // Handle ship rotation
-    let rotationOccurred = false;
+    // Calculate frame timing
+    const currentTime = performance.now();
+    const deltaTime = Math.min(currentTime - lastFrameTime, 100); // Cap at 100ms
+    lastFrameTime = currentTime;
     
-    // Reset quaternions
-    pitchQuaternion.identity();
-    yawQuaternion.identity();
+    // Accumulate time for fixed timestep updates
+    accumulator += deltaTime;
     
-    // Pitch (up/down)
-    if (keyState.ArrowUp || keyState.w) {
-        pitchQuaternion.setFromAxisAngle(rightVector, -ROTATION_SPEED);
-        rotationOccurred = true;
+    // Update physics at fixed timestep
+    while (accumulator >= CAMERA_TIME_STEP) {
+        // Handle ship rotation
+        let rotationOccurred = false;
+        
+        // Reset quaternions
+        pitchQuaternion.identity();
+        yawQuaternion.identity();
+        
+        // Pitch (up/down)
+        if (keyState.ArrowUp || keyState.w) {
+            pitchQuaternion.setFromAxisAngle(rightVector, -ROTATION_SPEED);
+            rotationOccurred = true;
+        }
+        if (keyState.ArrowDown || keyState.s) {
+            pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED);
+            rotationOccurred = true;
+        }
+        
+        // Yaw (left/right)
+        if (keyState.ArrowLeft || keyState.a) {
+            yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED);
+            rotationOccurred = true;
+        }
+        if (keyState.ArrowRight || keyState.d) {
+            yawQuaternion.setFromAxisAngle(upVector, -ROTATION_SPEED);
+            rotationOccurred = true;
+        }
+        
+        // Apply rotations if any occurred
+        if (rotationOccurred) {
+            tempQuaternion.copy(rotationAxes.quaternion);
+            rotationAxes.quaternion.multiply(yawQuaternion);
+            rotationAxes.quaternion.multiply(pitchQuaternion);
+        }
+        
+        // Handle thrust
+        if (keyState[' ']) {
+            shipPhysics.startThrust();
+        } else {
+            shipPhysics.stopThrust();
+        }
+        
+        // Update physics for both ships
+        const playerInBounds = shipPhysics.update(rotationAxes);
+        const testShipInBounds = testShipPhysics.update(testRotationAxes);
+        
+        // Remove ships that are out of bounds
+        if (!playerInBounds && rotationAxes.parent) {
+            scene.remove(rotationAxes);
+        }
+        if (!testShipInBounds && testRotationAxes.parent) {
+            scene.remove(testRotationAxes);
+        }
+        
+        // Only check for collisions if both ships are in bounds
+        if (playerInBounds && testShipInBounds) {
+            shipPhysics.checkCollision(rotationAxes, testShipPhysics, testRotationAxes);
+        }
+        
+        accumulator -= CAMERA_TIME_STEP;
     }
-    if (keyState.ArrowDown || keyState.s) {
-        pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED);
-        rotationOccurred = true;
-    }
     
-    // Yaw (left/right)
-    if (keyState.ArrowLeft || keyState.a) {
-        yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED);
-        rotationOccurred = true;
+    // Update camera position and rotation (interpolated)
+    if (rotationAxes.parent) {
+        // Get the ship's world quaternion
+        const shipQuaternion = rotationAxes.quaternion;
+
+        // Calculate camera offset in ship's local space
+        const cameraOffset = new THREE.Vector3(0, CAMERA_HEIGHT, CAMERA_DISTANCE);
+        cameraOffset.applyQuaternion(shipQuaternion);
+
+        // Set desired camera position relative to ship
+        desiredCameraPosition.copy(rotationAxes.position).add(cameraOffset);
+
+        // Smoothly interpolate camera position
+        camera.position.lerp(desiredCameraPosition, CAMERA_POSITION_LERP);
+
+        
+        // Create a rotation to tilt the camera down slightly to center the ship's direction
+        const cameraRotation = new THREE.Quaternion();
+        cameraRotation.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI * -0.08); // 12 degrees down
+
+
+        // Set camera rotation to match ship's orientation
+        camera.quaternion.copy(shipQuaternion).multiply(cameraRotation);
     }
-    if (keyState.ArrowRight || keyState.d) {
-        yawQuaternion.setFromAxisAngle(upVector, -ROTATION_SPEED);
-        rotationOccurred = true;
-    }
-    
-    // Apply rotations if any occurred
-    if (rotationOccurred) {
-        tempQuaternion.copy(rotationAxes.quaternion);
-        rotationAxes.quaternion.multiply(yawQuaternion);
-        rotationAxes.quaternion.multiply(pitchQuaternion);
-    }
-    
-    // Handle thrust
-    if (keyState[' ']) {
-        shipPhysics.startThrust();
-    } else {
-        shipPhysics.stopThrust();
-    }
-    
-    // Update physics for both ships
-    shipPhysics.update(rotationAxes);
-    testShipPhysics.update(testRotationAxes);
-    
-    // Check for collisions
-    const collisionOccurred = shipPhysics.checkCollision(rotationAxes, testShipPhysics, testRotationAxes);
     
     // Apply camera shake if collision occurred
     const playerShake = shipPhysics.getShakeOffset();
     const testShake = testShipPhysics.getShakeOffset();
-    camera.position.set(
+    camera.position.add(new THREE.Vector3(
         playerShake.x + testShake.x,
         playerShake.y + testShake.y,
-        100 + playerShake.z + testShake.z
-    );
+        playerShake.z + testShake.z
+    ));
     
     // Slowly rotate the safe zone for better depth perception
     safeZone.rotation.y += 0.001;

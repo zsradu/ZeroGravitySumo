@@ -110,11 +110,6 @@
 - `scripts/physics.js`: Added collision detection and response system
 - `scripts/scene.js`: Added test ship and collision detection integration
 
-### Next Steps:
-- Step 7: Add scoring system and win conditions
-- Step 8: Add game state management (start, end, restart)
-- Step 9: Add sound effects and visual feedback
-- Step 10: Add menu system and game settings
 
 ### Expected Test Results:
 When opening index.html in a browser, you should see:
@@ -128,3 +123,57 @@ When opening index.html in a browser, you should see:
    - Zero-gravity physics
    - Thrust and boost mechanics
    - Arena boundaries
+
+## Step 7: Safe Zone Boundaries ✓
+- Implemented boundary checking at 50 units radius
+- Added ship removal when crossing boundary
+- Disabled collision checks for out-of-bounds ships
+- Integrated with existing physics system
+
+### Files Modified:
+- `scripts/physics.js`: Added boundary checking and out-of-bounds state
+- `scripts/scene.js`: Added ship removal logic for out-of-bounds ships
+
+### Expected Test Results:
+When opening index.html in a browser, you should see:
+1. Ships remain visible while inside the safe zone (radius 50)
+2. When a ship crosses the boundary:
+   - It should be removed from the scene
+   - No more collisions should be processed for that ship
+3. All previous functionality should remain intact:
+   - Ship movement and rotation
+   - Zero-gravity physics
+   - Thrust and boost mechanics
+   - Collision detection and response
+
+## Step 8: Game Loop Implementation ✓
+- Implemented fixed timestep game loop (60 FPS target)
+- Added camera following behavior:
+  - 10 units behind ship
+  - 5 units above ship
+  - Smooth position interpolation (0.1 lerp)
+  - Smooth rotation interpolation (0.05 lerp)
+- Maintained performance with proper frame timing
+- Added proper camera following and transitions
+
+### Files Modified:
+- `scripts/scene.js`: Added fixed timestep loop and camera behavior
+
+### Next Steps:
+- Step 9: Add AI bots
+- Step 10: Simulate dynamic bot joining and leaving
+- Step 11: Implement round timer
+
+### Expected Test Results:
+When opening index.html in a browser, you should see:
+1. Game running at a stable 60 FPS
+2. Camera smoothly following the player's ship:
+   - Positioned 10 units behind and 5 units above
+   - Smoothly transitioning during movement
+   - Properly rotating to follow ship orientation
+3. All previous functionality should remain intact:
+   - Ship movement and rotation
+   - Zero-gravity physics
+   - Thrust and boost mechanics
+   - Collision detection and response
+   - Safe zone boundaries
