@@ -55,9 +55,23 @@ index.html
 - Key Components:
   - Scene: Root container for all 3D objects
   - Camera: Perspective camera with 75° FOV
-  - Renderer: WebGL renderer with responsive canvas
+  - Renderer: WebGL renderer with responsive canvas and antialiasing
   - Animation Loop: Maintains 60 FPS rendering
+  - Safe Zone: Spherical boundary (radius 50) with transparency
+  - Background: Star field for depth perception
+
+### Game Arena
+- **Safe Zone**:
+  - Type: Sphere mesh with radius 50
+  - Material: Semi-transparent wireframe (opacity 0.3)
+  - Purpose: Defines play area boundaries
+  - Behavior: Slow rotation for visual feedback
+- **Background**:
+  - Type: Point cloud (1000 vertices)
+  - Purpose: Provides depth perception and immersion
+  - Distribution: Random points in 2000x2000x2000 cube
 
 ## Update History
 - Initial setup: Basic file structure and HTML5 boilerplate
 - Three.js Integration: Added 3D rendering capabilities and basic scene management
+- Game Arena: Implemented play area boundary and visual environment
