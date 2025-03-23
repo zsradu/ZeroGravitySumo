@@ -30,13 +30,17 @@ class Bot {
         this.physics = new Physics();
         
         // Bot state
-        this.state = 'stayCenter';
+        this.state = 'attack';
         this.lastStateChange = performance.now();
-        this.stateUpdateInterval = 1000; // 1 second
+        this.stateUpdateInterval = 500; // 0.5 second
         
         // Target for movement
         this.targetPosition = new THREE.Vector3();
         this.targetRotation = new THREE.Quaternion();
+        
+        // Last target update
+        this.lastTargetUpdate = 0;
+        this.targetUpdateInterval = 100; // Update target 10 times per second
     }
     
     update(otherShips, camera) {
@@ -45,10 +49,16 @@ class Bot {
         // Update LOD based on distance to camera
         this.lod.update(camera);
         
-        // Update state every second
+        // Update state every interval
         if (now - this.lastStateChange >= this.stateUpdateInterval) {
             this.updateState(otherShips);
             this.lastStateChange = now;
+        }
+        
+        // Update target position more frequently
+        if (now - this.lastTargetUpdate >= this.targetUpdateInterval) {
+            this.updateTargetPosition(otherShips);
+            this.lastTargetUpdate = now;
         }
         
         // Execute current state behavior
@@ -60,7 +70,27 @@ class Bot {
     }
     
     updateState(otherShips) {
-        // Find nearest ship
+        // Always be in attack state - we want aggressive bots
+        this.state = 'attack';
+    }
+    
+    updateTargetPosition(otherShips) {
+        // Check if we're too close to the boundary
+        const distanceFromCenter = this.rotationAxes.position.length();
+        const ARENA_RADIUS = 50;
+        const SAFETY_THRESHOLD = 40;
+        
+        if (distanceFromCenter > SAFETY_THRESHOLD) {
+            // If too close to boundary, target slightly inside the center
+            // Use the bot's current position to calculate a safe point towards center
+            const safeTarget = this.rotationAxes.position.clone()
+                .normalize()
+                .multiplyScalar(-20); // Target point 20 units towards center
+            this.targetPosition.copy(safeTarget);
+            return;
+        }
+        
+        // Normal targeting behavior when safe from boundary
         let nearestDistance = Infinity;
         let nearestShip = null;
         
@@ -74,27 +104,30 @@ class Bot {
             }
         }
         
-        // State transition logic
-        if (nearestDistance < 5) {
-            // Avoid if ship is too close
-            this.state = 'avoid';
-            this.targetPosition.copy(this.rotationAxes.position)
-                .sub(nearestShip.position)
-                .normalize()
-                .multiplyScalar(10)
-                .add(this.rotationAxes.position);
-        } else {
-            // 50% chance to attack if no ships are nearby
-            if (Math.random() < 0.5) {
-                this.state = 'attack';
-                if (nearestShip) {
-                    this.targetPosition.copy(nearestShip.position);
-                }
-            } else {
-                // Default to staying near center
-                this.state = 'stayCenter';
-                this.targetPosition.set(0, 0, 0);
+        if (nearestShip) {
+            // Set target to intercept the nearest ship
+            const predictedPosition = nearestShip.position.clone();
+            // Add a small random offset to create more dynamic behavior
+            predictedPosition.add(new THREE.Vector3(
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2,
+                (Math.random() - 0.5) * 2
+            ));
+            
+            // If target would lead us too close to boundary, adjust it inward
+            const targetDistanceFromCenter = predictedPosition.length();
+            if (targetDistanceFromCenter > SAFETY_THRESHOLD) {
+                predictedPosition.normalize().multiplyScalar(SAFETY_THRESHOLD * 0.8); // Aim for 80% of safety threshold
             }
+            
+            this.targetPosition.copy(predictedPosition);
+        } else {
+            // If no ships found, move towards center with random offset
+            this.targetPosition.set(
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 20,
+                (Math.random() - 0.5) * 20
+            );
         }
     }
     
@@ -103,11 +136,39 @@ class Bot {
         const toTarget = new THREE.Vector3();
         toTarget.copy(this.targetPosition).sub(this.rotationAxes.position);
         
-        if (toTarget.length() > 0.1) {
-            // Calculate desired rotation
-            const forward = new THREE.Vector3(0, 0, -1);
-            forward.applyQuaternion(this.rotationAxes.quaternion);
+        // Check if we're too close to the boundary
+        const distanceFromCenter = this.rotationAxes.position.length();
+        const ARENA_RADIUS = 50;
+        const SAFETY_THRESHOLD = 40;
+        
+        // Calculate desired rotation
+        const forward = new THREE.Vector3(0, 0, -1);
+        forward.applyQuaternion(this.rotationAxes.quaternion);
+        
+        if (distanceFromCenter > SAFETY_THRESHOLD) {
+            // In danger zone - calculate direction to center
+            const toCenter = new THREE.Vector3(0, 0, 0).sub(this.rotationAxes.position).normalize();
+            const rotationAxis = new THREE.Vector3();
+            rotationAxis.crossVectors(forward, toCenter);
             
+            // Apply faster rotation when in danger
+            if (rotationAxis.length() > 0.001) {
+                const rotationQuaternion = new THREE.Quaternion();
+                rotationQuaternion.setFromAxisAngle(rotationAxis.normalize(), 0.15); // Even faster rotation in danger
+                this.rotationAxes.quaternion.multiply(rotationQuaternion);
+            }
+            
+            // Check if we're facing roughly towards center
+            const angleToCenter = forward.angleTo(toCenter);
+            if (angleToCenter < Math.PI / 2) { // Thrust if pointing even roughly towards center
+                this.physics.startThrust();
+                this.physics.tryBoost(); // Always try to boost when in danger
+            }
+            return; // Skip normal behavior when in danger zone
+        }
+        
+        // Normal behavior when in safe zone
+        if (toTarget.length() > 0.1) {
             const rotationAxis = new THREE.Vector3();
             rotationAxis.crossVectors(forward, toTarget.normalize());
             
@@ -118,13 +179,13 @@ class Bot {
                 this.rotationAxes.quaternion.multiply(rotationQuaternion);
             }
             
-            // Apply thrust based on state
+            // Apply thrust based on alignment
             const angle = forward.angleTo(toTarget);
-            if (angle < Math.PI / 4) { // Only thrust if roughly facing target
-                if (this.state === 'attack') {
-                    this.physics.tryBoost(); // Try to boost when attacking
-                }
+            if (angle < Math.PI / 3) { // Only thrust if roughly facing target
                 this.physics.startThrust();
+                if (angle < Math.PI / 4) { // Try to boost if well-aligned
+                    this.physics.tryBoost();
+                }
             } else {
                 this.physics.stopThrust();
             }

@@ -7,6 +7,41 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 const game = new Game();
 game.startRound();
 
+// Listen for game reset event
+document.addEventListener('gameReset', () => {
+    // Remove all existing bots
+    allShips.forEach(ship => {
+        if (ship !== rotationAxes) {
+            scene.remove(ship);
+        }
+    });
+    
+    // Clear arrays
+    allShips = [rotationAxes];
+    bots.length = 0;
+    
+    // Reset player ship
+    rotationAxes.position.set(
+        (Math.random() - 0.5) * 40,
+        (Math.random() - 0.5) * 40,
+        (Math.random() - 0.5) * 40
+    );
+    shipPhysics.velocity.set(0, 0, 0);
+    
+    // Make sure player ship is in the scene
+    if (!rotationAxes.parent) {
+        scene.add(rotationAxes);
+    }
+    
+    // Create new bots
+    for (let i = 0; i < MIN_BOTS; i++) {
+        createBot();
+    }
+    
+    // Reset next bot update time
+    nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
+});
+
 // Camera following parameters
 const CAMERA_DISTANCE = 10;  // Units behind ship
 const CAMERA_HEIGHT = 5;     // Units above ship
@@ -53,18 +88,6 @@ scene.add(rotationAxes);
 rotationAxes.add(playerShip);
 playerShip.position.set(0, 0, 0); // Reset position relative to rotationAxes
 
-// Create test ship for collision testing
-// const testShipGeometry = new THREE.ConeGeometry(1, 2, 16);
-// const testShipMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-// const testShip = new THREE.Mesh(testShipGeometry, testShipMaterial);
-// const testRotationAxes = new THREE.Group();
-
-// Position test ship
-// testRotationAxes.position.set(5, 0, 0); // Place 5 units to the right of center
-// testShip.rotation.x = Math.PI / 2;
-// scene.add(testRotationAxes);
-// testRotationAxes.add(testShip);
-
 // Initialize physics for both ships
 const shipPhysics = new Physics();
 const testShipPhysics = new Physics();
@@ -84,13 +107,14 @@ const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
 // Bot management constants
-const MIN_BOTS = 6;
-const MAX_BOTS = 8;
-const BOT_UPDATE_INTERVAL = 30000; // 30 seconds
+const MIN_BOTS = 2;
+const MAX_BOTS = 4;
+const BOT_UPDATE_INTERVAL = 300000; // 300 seconds
 let lastBotUpdate = performance.now();
+let nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
 
 // Create array to hold all ships (player and bots)
-const allShips = [];
+let allShips = [];
 
 // Create initial bots with random positions
 const bots = [];
@@ -102,11 +126,13 @@ function createBot() {
     );
     const bot = new Bot(scene, position);
     bots.push(bot);
-    allShips.push(bot.rotationAxes);
+    const botShip = bot.rotationAxes;
+    botShip.userData = { bot: bot }; // Store bot reference in ship's userData
+    allShips.push(botShip);
 }
 
 // Create initial set of bots
-for (let i = 0; i < MIN_BOTS; i++) {
+for (let i = 0; i < Math.random() * (MAX_BOTS - MIN_BOTS) + MIN_BOTS; i++) {
     createBot();
 }
 
@@ -175,48 +201,8 @@ function animate() {
     game.updateTimer();
     game.updateBoostBar(shipPhysics.boostCooldown, shipPhysics.BOOST_COOLDOWN);
     
-    // Check if it's time to update bot count
-    if (currentTime - lastBotUpdate >= BOT_UPDATE_INTERVAL) {
-        // Randomly add or remove a bot to maintain MIN_BOTS to MAX_BOTS
-        const totalBots = bots.length;
-        
-        if (totalBots < MIN_BOTS) {
-            // Add a bot if below minimum
-            createBot();
-        } else if (totalBots > MAX_BOTS) {
-            // Remove a random bot if above maximum
-            const indexToRemove = Math.floor(Math.random() * bots.length);
-            const botToRemove = bots[indexToRemove];
-            botToRemove.remove(scene);
-            bots.splice(indexToRemove, 1);
-            const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
-            if (shipIndex > -1) {
-                allShips.splice(shipIndex, 1);
-            }
-        } else {
-            // Randomly add or remove a bot
-            if (Math.random() < 0.5 && totalBots < MAX_BOTS) {
-                createBot();
-            } else if (totalBots > MIN_BOTS) {
-                const indexToRemove = Math.floor(Math.random() * bots.length);
-                const botToRemove = bots[indexToRemove];
-                botToRemove.remove(scene);
-                bots.splice(indexToRemove, 1);
-                const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
-                if (shipIndex > -1) {
-                    allShips.splice(shipIndex, 1);
-                }
-            }
-        }
-        
-        lastBotUpdate = currentTime;
-    }
-    
-    // Accumulate time for fixed timestep updates
-    accumulator += deltaTime;
-    
-    // Update physics at fixed timestep
-    while (accumulator >= CAMERA_TIME_STEP) {
+    // Only update physics if game is in playing state
+    if (game.gameState === 'playing') {
         // Handle ship rotation
         let rotationOccurred = false;
         
@@ -258,52 +244,102 @@ function animate() {
             shipPhysics.stopThrust();
         }
         
-        // Update physics for player ship
+        // Update player ship physics
         const playerInBounds = shipPhysics.update(rotationAxes);
-        if (!playerInBounds && rotationAxes.parent) {
-            scene.remove(rotationAxes);
-            const index = allShips.indexOf(rotationAxes);
-            if (index > -1) {
-                allShips.splice(index, 1);
-            }
+        if (!playerInBounds) {
+            game.handleLoss();
         }
         
-        // Update bots
-        for (let i = bots.length - 1; i >= 0; i--) {
-            const bot = bots[i];
-            const botInBounds = bot.update(allShips, camera);
-            
-            if (!botInBounds) {
-                bot.remove(scene);
-                bots.splice(i, 1);
-                const index = allShips.indexOf(bot.rotationAxes);
-                if (index > -1) {
-                    allShips.splice(index, 1);
+        // Update bot physics and check for out-of-bounds
+        let activeBotCount = 0;
+        for (let i = allShips.length - 1; i >= 0; i--) {
+            const ship = allShips[i];
+            if (ship !== rotationAxes) {
+                const bot = ship.userData?.bot;
+                if (bot) {
+                    // Update bot behavior first
+                    bot.update(allShips, camera);
+                    
+                    // Then update physics
+                    const botInBounds = bot.physics.update(ship);
+                    if (!botInBounds) {
+                        scene.remove(ship);
+                        allShips.splice(i, 1);
+                        const botIndex = bots.indexOf(bot);
+                        if (botIndex > -1) {
+                            bots.splice(botIndex, 1);
+                        }
+                    } else {
+                        activeBotCount++;
+                    }
                 }
             }
         }
         
-        // Check collisions between all ships
+        // Check if player is last ship in safe zone
+        game.isLastShipInSafeZone(playerInBounds, activeBotCount);
+        
+        // Check for collisions between all ships
         for (let i = 0; i < allShips.length; i++) {
-            const ship1 = allShips[i];
-            const physics1 = ship1 === rotationAxes ? shipPhysics : bots.find(b => b.rotationAxes === ship1)?.physics;
-            
-            if (!physics1) continue;
-            
             for (let j = i + 1; j < allShips.length; j++) {
+                const ship1 = allShips[i];
                 const ship2 = allShips[j];
-                const physics2 = ship2 === rotationAxes ? shipPhysics : bots.find(b => b.rotationAxes === ship2)?.physics;
+                const physics1 = ship1 === rotationAxes ? shipPhysics : ship1.userData?.bot?.physics;
+                const physics2 = ship2 === rotationAxes ? shipPhysics : ship2.userData?.bot?.physics;
                 
-                if (!physics2) continue;
-                
-                physics1.checkCollision(ship1, physics2, ship2);
+                if (physics1 && physics2) {
+                    physics1.checkCollision(ship1, physics2, ship2);
+                }
             }
         }
         
-        accumulator -= CAMERA_TIME_STEP;
+        // Check if it's time to update bot count
+        if (currentTime >= nextBotUpdateTime) {
+            // Randomly add or remove a bot to maintain MIN_BOTS to MAX_BOTS
+            const totalBots = bots.length;
+            
+            if (totalBots < MIN_BOTS) {
+                // Add a bot if below minimum
+                createBot();
+            } else if (totalBots > MAX_BOTS) {
+                // Remove a random bot if above maximum
+                const indexToRemove = Math.floor(Math.random() * bots.length);
+                const botToRemove = bots[indexToRemove];
+                scene.remove(botToRemove.rotationAxes);
+                bots.splice(indexToRemove, 1);
+                const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
+                if (shipIndex > -1) {
+                    allShips.splice(shipIndex, 1);
+                }
+            } else {
+                // Randomly add or remove a bot
+                if (Math.random() < 0.5 && totalBots < MAX_BOTS) {
+                    createBot();
+                } else if (totalBots > MIN_BOTS) {
+                    const indexToRemove = Math.floor(Math.random() * bots.length);
+                    const botToRemove = bots[indexToRemove];
+                    scene.remove(botToRemove.rotationAxes);
+                    bots.splice(indexToRemove, 1);
+                    const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
+                    if (shipIndex > -1) {
+                        allShips.splice(shipIndex, 1);
+                    }
+                }
+            }
+            
+            nextBotUpdateTime = currentTime + BOT_UPDATE_INTERVAL;
+        }
     }
     
-    // Update camera position and rotation (interpolated)
+    // Update camera position and rotation
+    updateCamera();
+    
+    // Render the scene
+    renderer.render(scene, camera);
+}
+
+// Camera update function
+function updateCamera() {
     if (rotationAxes.parent) {
         // Get the ship's world quaternion
         const shipQuaternion = rotationAxes.quaternion;
@@ -317,30 +353,18 @@ function animate() {
 
         // Smoothly interpolate camera position
         camera.position.lerp(desiredCameraPosition, CAMERA_POSITION_LERP);
-
         
         // Create a rotation to tilt the camera down slightly to center the ship's direction
         const cameraRotation = new THREE.Quaternion();
         cameraRotation.setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI * -0.08); // 12 degrees down
 
-
         // Set camera rotation to match ship's orientation
         camera.quaternion.copy(shipQuaternion).multiply(cameraRotation);
+        
+        // Apply camera shake if collision occurred
+        const playerShake = shipPhysics.getShakeOffset();
+        camera.position.add(playerShake);
     }
-    
-    // Apply camera shake if collision occurred
-    const playerShake = shipPhysics.getShakeOffset();
-    const testShake = testShipPhysics.getShakeOffset();
-    camera.position.add(new THREE.Vector3(
-        playerShake.x + testShake.x,
-        playerShake.y + testShake.y,
-        playerShake.z + testShake.z
-    ));
-    
-    // Slowly rotate the safe zone for better depth perception
-    safeZone.rotation.y += 0.001;
-    
-    renderer.render(scene, camera);
 }
 
 // Handle window resize

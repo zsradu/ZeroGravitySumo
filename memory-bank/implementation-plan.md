@@ -180,36 +180,21 @@ The tech stack is HTML/CSS/JS + Three.js, ensuring a lightweight, browser-based 
 
 ### **Step 12: Handle win/lose conditions**
 
-* In game.js, implement win conditions:
-  * Last ship in safe zone
-  * Survive until timer end
+* In game.js, check if the player is the last ship in the safe zone (win) or if they survive until the timer runs out (win).
+* If the player is eliminated (outside the safe zone), display a “You Lost” message.
+* If the player wins, increment the win counter and display a “You Won” message.
+* Regardless of the outcome, 3 seconds after the game is over, display a green button that says "Play again". On click of the button, another match should start from the beginning.
 * Add 0.5s fade transitions for state changes
 * **Test:** Game states should transition smoothly with proper UI feedback
 
 ---
 
-### **Step 13: Update the user interface**
-
-* Create styles/ui.css with exact HUD specifications
-* Implement responsive design with proper positioning
-* Add transparent backgrounds (rgba(0,0,0,0.2))
-* **Test:** UI should be clear and responsive on all devices
-
----
-
-### **Step 14: Optimize performance**
-
-* Limit render distance to 50 units
-* Implement LOD system (switch at 30 units)
-* Use basic lighting shaders
-* **Test:** Game should maintain 30+ FPS on mobile devices
-
----
-
-### **Step 15: Manage assets**
+### **Step 13: Manage assets**
 
 * Create ship model in GLTF format (<50KB)
-* Implement LOD levels with proper transitions
+* Create an assets.js file.
+* Use Three.js GLTFLoader (add via CDN) to load the ship model.
+* Cache the loaded model and reuse it for all ships.
 * Set up fallback to ConeGeometry
 * **Test:** Assets should load within 5 seconds with proper fallbacks
 
