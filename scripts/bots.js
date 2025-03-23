@@ -1,19 +1,30 @@
 class Bot {
     constructor(scene, position) {
-        // Create bot's geometry and material
-        const botGeometry = new THREE.ConeGeometry(1, 2, 16);
+        // Create high detail geometry (16 segments)
+        const highDetailGeometry = new THREE.ConeGeometry(1, 2, 16);
+        // Create low detail geometry (8 segments)
+        const lowDetailGeometry = new THREE.ConeGeometry(1, 2, 8);
         const botMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        this.ship = new THREE.Mesh(botGeometry, botMaterial);
+        
+        // Create both LOD meshes
+        this.highDetailMesh = new THREE.Mesh(highDetailGeometry, botMaterial);
+        this.lowDetailMesh = new THREE.Mesh(lowDetailGeometry, botMaterial);
+        
+        // Create LOD group
+        this.lod = new THREE.LOD();
+        this.lod.addLevel(this.highDetailMesh, 0);    // Use high detail when close
+        this.lod.addLevel(this.lowDetailMesh, 30);    // Switch to low detail at 30 units
         
         // Create rotation axes for the bot
         this.rotationAxes = new THREE.Group();
         this.rotationAxes.position.copy(position);
         scene.add(this.rotationAxes);
-        this.rotationAxes.add(this.ship);
+        this.rotationAxes.add(this.lod);
         
         // Rotate ship to point "forward" along its length
-        this.ship.rotation.x = Math.PI / 2;
-        this.ship.position.set(0, 0, 0); // Reset position relative to rotationAxes
+        this.highDetailMesh.rotation.x = Math.PI / 2;
+        this.lowDetailMesh.rotation.x = Math.PI / 2;
+        this.lod.position.set(0, 0, 0); // Reset position relative to rotationAxes
         
         // Initialize physics
         this.physics = new Physics();
@@ -28,8 +39,11 @@ class Bot {
         this.targetRotation = new THREE.Quaternion();
     }
     
-    update(otherShips) {
+    update(otherShips, camera) {
         const now = performance.now();
+        
+        // Update LOD based on distance to camera
+        this.lod.update(camera);
         
         // Update state every second
         if (now - this.lastStateChange >= this.stateUpdateInterval) {

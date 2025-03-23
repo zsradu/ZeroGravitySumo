@@ -79,13 +79,18 @@ const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
+// Bot management constants
+const MIN_BOTS = 6;
+const MAX_BOTS = 8;
+const BOT_UPDATE_INTERVAL = 30000; // 30 seconds
+let lastBotUpdate = performance.now();
+
 // Create array to hold all ships (player and bots)
 const allShips = [];
 
-// Create N bots with random positions
-const NUMBER_BOTS = 2;
+// Create initial bots with random positions
 const bots = [];
-for (let i = 0; i < NUMBER_BOTS; i++) {
+function createBot() {
     const position = new THREE.Vector3(
         (Math.random() - 0.5) * 40, // x: -20 to 20
         (Math.random() - 0.5) * 40, // y: -20 to 20
@@ -94,6 +99,11 @@ for (let i = 0; i < NUMBER_BOTS; i++) {
     const bot = new Bot(scene, position);
     bots.push(bot);
     allShips.push(bot.rotationAxes);
+}
+
+// Create initial set of bots
+for (let i = 0; i < MIN_BOTS; i++) {
+    createBot();
 }
 
 // Add player ship to allShips array
@@ -157,6 +167,43 @@ function animate() {
     const deltaTime = Math.min(currentTime - lastFrameTime, 100); // Cap at 100ms
     lastFrameTime = currentTime;
     
+    // Check if it's time to update bot count
+    if (currentTime - lastBotUpdate >= BOT_UPDATE_INTERVAL) {
+        // Randomly add or remove a bot to maintain MIN_BOTS to MAX_BOTS
+        const totalBots = bots.length;
+        
+        if (totalBots < MIN_BOTS) {
+            // Add a bot if below minimum
+            createBot();
+        } else if (totalBots > MAX_BOTS) {
+            // Remove a random bot if above maximum
+            const indexToRemove = Math.floor(Math.random() * bots.length);
+            const botToRemove = bots[indexToRemove];
+            botToRemove.remove(scene);
+            bots.splice(indexToRemove, 1);
+            const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
+            if (shipIndex > -1) {
+                allShips.splice(shipIndex, 1);
+            }
+        } else {
+            // Randomly add or remove a bot
+            if (Math.random() < 0.5 && totalBots < MAX_BOTS) {
+                createBot();
+            } else if (totalBots > MIN_BOTS) {
+                const indexToRemove = Math.floor(Math.random() * bots.length);
+                const botToRemove = bots[indexToRemove];
+                botToRemove.remove(scene);
+                bots.splice(indexToRemove, 1);
+                const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
+                if (shipIndex > -1) {
+                    allShips.splice(shipIndex, 1);
+                }
+            }
+        }
+        
+        lastBotUpdate = currentTime;
+    }
+    
     // Accumulate time for fixed timestep updates
     accumulator += deltaTime;
     
@@ -216,7 +263,7 @@ function animate() {
         // Update bots
         for (let i = bots.length - 1; i >= 0; i--) {
             const bot = bots[i];
-            const botInBounds = bot.update(allShips);
+            const botInBounds = bot.update(allShips, camera);
             
             if (!botInBounds) {
                 bot.remove(scene);

@@ -205,3 +205,34 @@ When opening index.html in a browser, you should see:
    - Camera following
    - Physics and collisions
    - Safe zone boundaries
+
+## Step 10: Dynamic Bot Management ✓
+- Implemented dynamic bot joining and leaving:
+  - Updates every 30 seconds
+  - Maintains 6-8 ships in the arena
+  - Random add/remove decisions
+- Added Level of Detail (LOD) system:
+  - High detail: 16 segments when close
+  - Low detail: 8 segments beyond 30 units
+  - Automatic LOD switching based on camera distance
+- Optimized performance with proper object management
+
+### Files Modified:
+- `scripts/bots.js`: Added LOD system and mesh management
+- `scripts/scene.js`: Added dynamic bot management
+
+### Expected Test Results:
+When opening index.html in a browser, you should see:
+1. Bot count fluctuating between 6-8 ships:
+   - New bots appearing randomly
+   - Random bots being removed
+   - Updates every 30 seconds
+2. LOD system working:
+   - Detailed models when close to camera
+   - Simpler models when far away
+   - Smooth transitions at 30 units
+3. All previous functionality intact:
+   - Bot AI behavior
+   - Physics and collisions
+   - Safe zone boundaries
+   - Camera following
