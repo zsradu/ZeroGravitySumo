@@ -147,7 +147,6 @@ class AssetManager {
     }
     
     getShipGeometry(isHighDetail = true) {
-        console.log('Getting ship geometry, high detail:', isHighDetail);
         const ship = this.assets.get('ship');
         if (!ship) {
             console.warn('No ship asset found, using fallback');
@@ -156,7 +155,6 @@ class AssetManager {
                 material: this.fallbackMaterial
             };
         }
-        console.log('Returning', isHighDetail ? 'high' : 'low', 'detail geometry');
         return {
             geometry: isHighDetail ? ship.highDetail : ship.lowDetail,
             material: ship.material

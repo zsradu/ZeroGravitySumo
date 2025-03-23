@@ -209,24 +209,29 @@ const keyState = {
     s: false,
     a: false,
     d: false,
-    ' ': false // Space key
+    ' ': false, // Space key for normal thrust
+    'Shift': false // Shift key for boost
 };
 
 // Keyboard event handlers
 window.addEventListener('keydown', (event) => {
     if (keyState.hasOwnProperty(event.key)) {
         keyState[event.key] = true;
-        
-        // Handle boost activation
-        if (event.key === ' ') {
-            shipPhysics.tryBoost();
-        }
+    }
+    // Handle Shift key separately since it has a different key name
+    if (event.key === 'Shift') {
+        keyState['Shift'] = true;
+        shipPhysics.tryBoost();
     }
 });
 
 window.addEventListener('keyup', (event) => {
     if (keyState.hasOwnProperty(event.key)) {
         keyState[event.key] = false;
+    }
+    // Handle Shift key separately
+    if (event.key === 'Shift') {
+        keyState['Shift'] = false;
     }
 });
 
@@ -297,12 +302,14 @@ function animate() {
             rotationAxes.quaternion.multiply(pitchQuaternion);
         }
         
-        // Handle thrust
-        if (keyState[' ']) {
+        // Handle thrust and boost separately
+        if (keyState[' ']) { // Space for normal thrust
             shipPhysics.startThrust();
         } else {
             shipPhysics.stopThrust();
         }
+        
+        // Boost is handled in keydown event to ensure proper cooldown
         
         // Update player ship physics
         const playerInBounds = shipPhysics.update(rotationAxes);
