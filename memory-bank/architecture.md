@@ -21,6 +21,7 @@
   - (Planned) `bots.js`: AI bot behavior
   - (Planned) `game.js`: Core game logic
   - (Planned) `ui.js`: User interface management
+  - `controls.js`: Controls system for player input
 
 ### Styles Directory (`/styles`)
 - Purpose: Contains all CSS styling for the game
@@ -40,6 +41,7 @@ index.html
 ├── three.min.js (CDN)
 ├── styles/main.css
 └── scripts/
+    ├── controls.js
     ├── physics.js
     ├── scene.js
     └── main.js
@@ -127,6 +129,37 @@ index.html
     - Mass: 1 unit
     - Collision radius: 1 unit
     - Static position for testing
+
+### Controls System (`controls.js`)
+- **Device Detection**:
+  - Screen width check (<768px)
+  - Touch capability detection
+  - Automatic control scheme selection
+- **Mobile Controls**:
+  - Virtual Joystick:
+    - Position: Bottom-left corner
+    - Size: 120px diameter
+    - Dead zone: 5% of range
+    - Touch event handling
+    - Normalized output (-1 to 1)
+  - Touch Buttons:
+    - Position: Bottom-right corner
+    - Size: 80px diameter
+    - 70% opacity
+    - Visual feedback on press
+- **Desktop Controls**:
+  - WASD/Arrow keys for rotation
+  - Space for normal thrust
+  - Shift for boost
+  - Key state tracking
+- **Common Interface**:
+  - `getRotationInput()`: Returns {x, y} for pitch/yaw
+  - `isThrusting()`: Boolean for thrust state
+  - `isBoosting()`: Boolean for boost state
+- **Integration**:
+  - Seamless integration with physics system
+  - Platform-independent input handling
+  - Consistent control behavior across devices
 
 ## Update History
 - Initial setup: Basic file structure and HTML5 boilerplate

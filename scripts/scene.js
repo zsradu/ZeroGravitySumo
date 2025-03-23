@@ -1,3 +1,5 @@
+// import { Controls } from './controls.js';
+
 // Initialize Three.js scene, camera, and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -199,42 +201,6 @@ function createInitialBots() {
 // Add player ship to allShips array
 allShips.push(rotationAxes);
 
-// Keyboard state
-const keyState = {
-    ArrowUp: false,
-    ArrowDown: false,
-    ArrowLeft: false,
-    ArrowRight: false,
-    w: false,
-    s: false,
-    a: false,
-    d: false,
-    ' ': false, // Space key for normal thrust
-    'Shift': false // Shift key for boost
-};
-
-// Keyboard event handlers
-window.addEventListener('keydown', (event) => {
-    if (keyState.hasOwnProperty(event.key)) {
-        keyState[event.key] = true;
-    }
-    // Handle Shift key separately since it has a different key name
-    if (event.key === 'Shift') {
-        keyState['Shift'] = true;
-        shipPhysics.tryBoost();
-    }
-});
-
-window.addEventListener('keyup', (event) => {
-    if (keyState.hasOwnProperty(event.key)) {
-        keyState[event.key] = false;
-    }
-    // Handle Shift key separately
-    if (event.key === 'Shift') {
-        keyState['Shift'] = false;
-    }
-});
-
 // Ship control parameters
 const ROTATION_SPEED = 0.05;
 
@@ -253,6 +219,9 @@ let accumulator = 0;
 const desiredCameraPosition = new THREE.Vector3();
 const desiredCameraRotation = new THREE.Quaternion();
 
+// Initialize controls
+const controls = new Controls(document.body);
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
@@ -268,48 +237,35 @@ function animate() {
     
     // Only update physics if game is in playing state
     if (game.gameState === 'playing') {
-        // Handle ship rotation
-        let rotationOccurred = false;
+        // Get rotation input from controls
+        const rotation = controls.getRotationInput();
         
-        // Reset quaternions
-        pitchQuaternion.identity();
-        yawQuaternion.identity();
-        
-        // Pitch (up/down)
-        if (keyState.ArrowUp || keyState.w) {
-            pitchQuaternion.setFromAxisAngle(rightVector, -ROTATION_SPEED);
-            rotationOccurred = true;
-        }
-        if (keyState.ArrowDown || keyState.s) {
-            pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED);
-            rotationOccurred = true;
-        }
-        
-        // Yaw (left/right)
-        if (keyState.ArrowLeft || keyState.a) {
-            yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED);
-            rotationOccurred = true;
-        }
-        if (keyState.ArrowRight || keyState.d) {
-            yawQuaternion.setFromAxisAngle(upVector, -ROTATION_SPEED);
-            rotationOccurred = true;
-        }
-        
-        // Apply rotations if any occurred
-        if (rotationOccurred) {
+        // Apply rotation
+        if (rotation.x !== 0 || rotation.y !== 0) {
             tempQuaternion.copy(rotationAxes.quaternion);
-            rotationAxes.quaternion.multiply(yawQuaternion);
-            rotationAxes.quaternion.multiply(pitchQuaternion);
+            
+            // Pitch (up/down)
+            if (rotation.x !== 0) {
+                pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED * rotation.x);
+                rotationAxes.quaternion.multiply(pitchQuaternion);
+            }
+            
+            // Yaw (left/right)
+            if (rotation.y !== 0) {
+                yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED * rotation.y);
+                rotationAxes.quaternion.multiply(yawQuaternion);
+            }
         }
         
-        // Handle thrust and boost separately
-        if (keyState[' ']) { // Space for normal thrust
+        // Handle thrust and boost
+        if (controls.isBoosting()) {
+            shipPhysics.startThrust(); // Always thrust when boosting
+            shipPhysics.tryBoost();
+        } else if (controls.isThrusting()) {
             shipPhysics.startThrust();
         } else {
             shipPhysics.stopThrust();
         }
-        
-        // Boost is handled in keydown event to ensure proper cooldown
         
         // Update player ship physics
         const playerInBounds = shipPhysics.update(rotationAxes);
