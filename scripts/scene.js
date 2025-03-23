@@ -3,6 +3,10 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
+// Initialize game manager
+const game = new Game();
+game.startRound();
+
 // Camera following parameters
 const CAMERA_DISTANCE = 10;  // Units behind ship
 const CAMERA_HEIGHT = 5;     // Units above ship
@@ -166,6 +170,10 @@ function animate() {
     const currentTime = performance.now();
     const deltaTime = Math.min(currentTime - lastFrameTime, 100); // Cap at 100ms
     lastFrameTime = currentTime;
+    
+    // Update game timer and boost UI
+    game.updateTimer();
+    game.updateBoostBar(shipPhysics.boostCooldown, shipPhysics.BOOST_COOLDOWN);
     
     // Check if it's time to update bot count
     if (currentTime - lastBotUpdate >= BOT_UPDATE_INTERVAL) {
