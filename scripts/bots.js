@@ -1,14 +1,41 @@
 class Bot {
     constructor(scene, position) {
-        // Create high detail geometry (16 segments)
-        const highDetailGeometry = new THREE.ConeGeometry(1, 2, 16);
-        // Create low detail geometry (8 segments)
-        const lowDetailGeometry = new THREE.ConeGeometry(1, 2, 8);
-        const botMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        // Get ship geometry and material from asset manager
+        const highDetailAsset = assetManager.getShipGeometry(true);
+        const lowDetailAsset = assetManager.getShipGeometry(false);
         
-        // Create both LOD meshes
-        this.highDetailMesh = new THREE.Mesh(highDetailGeometry, botMaterial);
-        this.lowDetailMesh = new THREE.Mesh(lowDetailGeometry, botMaterial);
+        // Create materials for high and low detail (clone to allow individual coloring)
+        const botMaterialHigh = highDetailAsset.material.clone();
+        const botMaterialLow = lowDetailAsset.material.clone();
+        
+        // Function to tint a material red while preserving its properties
+        const tintMaterialRed = (material) => {
+            // Keep the texture map
+            const textureMap = material.map;
+            
+            // Set material properties for PBR
+            material.metalness = 0; // Keep non-metallic
+            material.roughness = 0.67; // Keep original roughness
+            material.map = textureMap; // Preserve the texture map
+            
+            // Apply red tint while preserving texture
+            material.color.setRGB(1.0, 0.3, 0.3); // Reddish tint that allows texture to show
+            
+            // Make sure textures are enabled and updated
+            if (material.map) {
+                material.map.needsUpdate = true;
+            }
+            
+            material.needsUpdate = true;
+        };
+        
+        // Apply red tinting to both materials
+        tintMaterialRed(botMaterialHigh);
+        tintMaterialRed(botMaterialLow);
+        
+        // Create both LOD meshes using the asset manager
+        this.highDetailMesh = new THREE.Mesh(highDetailAsset.geometry, botMaterialHigh);
+        this.lowDetailMesh = new THREE.Mesh(lowDetailAsset.geometry, botMaterialLow);
         
         // Create LOD group
         this.lod = new THREE.LOD();
@@ -21,9 +48,12 @@ class Bot {
         scene.add(this.rotationAxes);
         this.rotationAxes.add(this.lod);
         
-        // Rotate ship to point "forward" along its length
+        // Rotate ship to point "forward" along its length and flip 180 degrees
         this.highDetailMesh.rotation.x = Math.PI / 2;
+        this.highDetailMesh.rotation.z = Math.PI; // 180-degree rotation around Z instead of Y
         this.lowDetailMesh.rotation.x = Math.PI / 2;
+        this.lowDetailMesh.rotation.z = Math.PI; // 180-degree rotation around Z instead of Y
+        
         this.lod.position.set(0, 0, 0); // Reset position relative to rotationAxes
         
         // Initialize physics

@@ -191,10 +191,10 @@ The tech stack is HTML/CSS/JS + Three.js, ensuring a lightweight, browser-based 
 
 ### **Step 13: Manage assets**
 
-* Create ship model in GLTF format (<50KB)
+* Create a spaceship model in GLTF format (<50KB)
 * Create an assets.js file.
 * Use Three.js GLTFLoader (add via CDN) to load the ship model.
-* Cache the loaded model and reuse it for all ships.
+* Cache the loaded model and reuse it for all ships, with the bots' being a different color.
 * Set up fallback to ConeGeometry
 * **Test:** Assets should load within 5 seconds with proper fallbacks
 

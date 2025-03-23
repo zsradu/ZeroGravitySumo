@@ -3,9 +3,82 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 
+// Add lighting to the scene
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
+scene.add(ambientLight);
+
+// Add directional light (like sunlight)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(5, 5, 5);
+scene.add(directionalLight);
+
+// Add a point light to enhance material details
+const pointLight = new THREE.PointLight(0xffffff, 0.5);
+pointLight.position.set(-5, 5, -5);
+scene.add(pointLight);
+
 // Initialize game manager
 const game = new Game();
 game.startRound();
+
+// Initialize the game
+async function initGame() {
+    console.log('Starting game initialization...');
+    try {
+        // Load assets first
+        console.log('Loading assets...');
+        await assetManager.loadAssets();
+        console.log('Assets loaded successfully');
+        
+        // Create player ship
+        console.log('Creating player ship...');
+        const shipAsset = assetManager.getShipGeometry(true);
+        playerShip = new THREE.Mesh(shipAsset.geometry, shipAsset.material.clone()); // Clone material to allow individual coloring
+        rotationAxes = new THREE.Group();
+        scene.add(rotationAxes);
+        rotationAxes.add(playerShip);
+        console.log('Player ship created');
+        
+        // Rotate ship to point "forward" along its length and flip 180 degrees
+        playerShip.rotation.x = Math.PI / 2;
+        playerShip.rotation.z = Math.PI; // 180-degree rotation
+        
+        // Initialize physics for player
+        console.log('Initializing physics...');
+        shipPhysics = new Physics();
+        
+        // Add player ship to allShips array
+        allShips = [rotationAxes];
+        
+        // Create initial bots
+        console.log('Creating initial bots...');
+        createInitialBots();
+        console.log('Bots created successfully');
+        
+        // Start the game loop
+        console.log('Starting game loop...');
+        animate();
+        console.log('Game initialized successfully');
+    } catch (error) {
+        console.error('Error during game initialization:', error);
+        throw error;
+    }
+}
+
+// Start the game
+initGame().catch(error => {
+    console.error('Failed to initialize game:', error);
+    // Show error message to user
+    const errorDiv = document.createElement('div');
+    errorDiv.style.position = 'absolute';
+    errorDiv.style.top = '50%';
+    errorDiv.style.left = '50%';
+    errorDiv.style.transform = 'translate(-50%, -50%)';
+    errorDiv.style.color = 'white';
+    errorDiv.style.fontSize = '24px';
+    errorDiv.textContent = 'Failed to load game assets. Please refresh the page.';
+    document.body.appendChild(errorDiv);
+}); 
 
 // Listen for game reset event
 document.addEventListener('gameReset', () => {
@@ -65,33 +138,6 @@ const safeZoneMaterial = new THREE.MeshBasicMaterial({
 const safeZone = new THREE.Mesh(safeZoneGeometry, safeZoneMaterial);
 scene.add(safeZone);
 
-// Create player's spaceship
-const shipGeometry = new THREE.ConeGeometry(1, 2, 16);
-const shipMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-const playerShip = new THREE.Mesh(shipGeometry, shipMaterial);
-
-// Position ship randomly within safe zone
-playerShip.position.set(
-    (Math.random() - 0.5) * 40, // x: -20 to 20
-    (Math.random() - 0.5) * 40, // y: -20 to 20
-    (Math.random() - 0.5) * 40  // z: -20 to 20
-);
-
-// Rotate ship to point "forward" along its length
-playerShip.rotation.x = Math.PI / 2;
-scene.add(playerShip);
-
-// Create rotation axes for the ship
-const rotationAxes = new THREE.Group();
-rotationAxes.position.copy(playerShip.position);
-scene.add(rotationAxes);
-rotationAxes.add(playerShip);
-playerShip.position.set(0, 0, 0); // Reset position relative to rotationAxes
-
-// Initialize physics for both ships
-const shipPhysics = new Physics();
-const testShipPhysics = new Physics();
-
 // Add some stars in the background for depth perception
 const starGeometry = new THREE.BufferGeometry();
 const starVertices = [];
@@ -113,7 +159,10 @@ const BOT_UPDATE_INTERVAL = 300000; // 300 seconds
 let lastBotUpdate = performance.now();
 let nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
 
-// Create array to hold all ships (player and bots)
+// Variables for ships and physics
+let playerShip;
+let rotationAxes;
+let shipPhysics;
 let allShips = [];
 
 // Create initial bots with random positions
@@ -131,9 +180,20 @@ function createBot() {
     allShips.push(botShip);
 }
 
-// Create initial set of bots
-for (let i = 0; i < Math.random() * (MAX_BOTS - MIN_BOTS) + MIN_BOTS; i++) {
-    createBot();
+// Function to create initial set of bots
+function createInitialBots() {
+    // Clear existing bots if any
+    bots.forEach(bot => {
+        scene.remove(bot.rotationAxes);
+    });
+    bots.length = 0;
+    allShips = [rotationAxes]; // Reset to just player ship
+    
+    // Create new set of bots
+    const initialBotCount = Math.floor(Math.random() * (MAX_BOTS - MIN_BOTS + 1)) + MIN_BOTS;
+    for (let i = 0; i < initialBotCount; i++) {
+        createBot();
+    }
 }
 
 // Add player ship to allShips array
@@ -336,7 +396,14 @@ function animate() {
     
     // Render the scene
     renderer.render(scene, camera);
+    
+    // Remove this after first frame
+    if (animate.firstFrame) {
+        console.log('First animation frame completed successfully');
+        animate.firstFrame = false;
+    }
 }
+animate.firstFrame = true;
 
 // Camera update function
 function updateCamera() {
@@ -377,6 +444,3 @@ window.addEventListener('resize', () => {
     
     renderer.setSize(width, height);
 }, false);
-
-// Start animation loop
-animate(); 
