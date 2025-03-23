@@ -50,22 +50,22 @@ rotationAxes.add(playerShip);
 playerShip.position.set(0, 0, 0); // Reset position relative to rotationAxes
 
 // Create test ship for collision testing
-const testShipGeometry = new THREE.ConeGeometry(1, 2, 16);
-const testShipMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-const testShip = new THREE.Mesh(testShipGeometry, testShipMaterial);
-const testRotationAxes = new THREE.Group();
+// const testShipGeometry = new THREE.ConeGeometry(1, 2, 16);
+// const testShipMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+// const testShip = new THREE.Mesh(testShipGeometry, testShipMaterial);
+// const testRotationAxes = new THREE.Group();
 
 // Position test ship
-testRotationAxes.position.set(5, 0, 0); // Place 5 units to the right of center
-testShip.rotation.x = Math.PI / 2;
-scene.add(testRotationAxes);
-testRotationAxes.add(testShip);
+// testRotationAxes.position.set(5, 0, 0); // Place 5 units to the right of center
+// testShip.rotation.x = Math.PI / 2;
+// scene.add(testRotationAxes);
+// testRotationAxes.add(testShip);
 
 // Initialize physics for both ships
 const shipPhysics = new Physics();
 const testShipPhysics = new Physics();
 
-// Optional: Add some stars in the background for depth perception
+// Add some stars in the background for depth perception
 const starGeometry = new THREE.BufferGeometry();
 const starVertices = [];
 for (let i = 0; i < 1000; i++) {
@@ -78,6 +78,26 @@ starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVerti
 const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
+
+// Create array to hold all ships (player and bots)
+const allShips = [];
+
+// Create N bots with random positions
+const NUMBER_BOTS = 2;
+const bots = [];
+for (let i = 0; i < NUMBER_BOTS; i++) {
+    const position = new THREE.Vector3(
+        (Math.random() - 0.5) * 40, // x: -20 to 20
+        (Math.random() - 0.5) * 40, // y: -20 to 20
+        (Math.random() - 0.5) * 40  // z: -20 to 20
+    );
+    const bot = new Bot(scene, position);
+    bots.push(bot);
+    allShips.push(bot.rotationAxes);
+}
+
+// Add player ship to allShips array
+allShips.push(rotationAxes);
 
 // Keyboard state
 const keyState = {
@@ -183,21 +203,46 @@ function animate() {
             shipPhysics.stopThrust();
         }
         
-        // Update physics for both ships
+        // Update physics for player ship
         const playerInBounds = shipPhysics.update(rotationAxes);
-        const testShipInBounds = testShipPhysics.update(testRotationAxes);
-        
-        // Remove ships that are out of bounds
         if (!playerInBounds && rotationAxes.parent) {
             scene.remove(rotationAxes);
-        }
-        if (!testShipInBounds && testRotationAxes.parent) {
-            scene.remove(testRotationAxes);
+            const index = allShips.indexOf(rotationAxes);
+            if (index > -1) {
+                allShips.splice(index, 1);
+            }
         }
         
-        // Only check for collisions if both ships are in bounds
-        if (playerInBounds && testShipInBounds) {
-            shipPhysics.checkCollision(rotationAxes, testShipPhysics, testRotationAxes);
+        // Update bots
+        for (let i = bots.length - 1; i >= 0; i--) {
+            const bot = bots[i];
+            const botInBounds = bot.update(allShips);
+            
+            if (!botInBounds) {
+                bot.remove(scene);
+                bots.splice(i, 1);
+                const index = allShips.indexOf(bot.rotationAxes);
+                if (index > -1) {
+                    allShips.splice(index, 1);
+                }
+            }
+        }
+        
+        // Check collisions between all ships
+        for (let i = 0; i < allShips.length; i++) {
+            const ship1 = allShips[i];
+            const physics1 = ship1 === rotationAxes ? shipPhysics : bots.find(b => b.rotationAxes === ship1)?.physics;
+            
+            if (!physics1) continue;
+            
+            for (let j = i + 1; j < allShips.length; j++) {
+                const ship2 = allShips[j];
+                const physics2 = ship2 === rotationAxes ? shipPhysics : bots.find(b => b.rotationAxes === ship2)?.physics;
+                
+                if (!physics2) continue;
+                
+                physics1.checkCollision(ship1, physics2, ship2);
+            }
         }
         
         accumulator -= CAMERA_TIME_STEP;

@@ -1,6 +1,6 @@
 // Physics constants
-const NORMAL_THRUST = 2.5;  // units/s²
-const BOOST_THRUST = 10.0;   // units/s²
+const NORMAL_THRUST = 10.0;  // units/s²
+const BOOST_THRUST = 40.0;   // units/s²
 const DAMPING = 0.99;       // per frame
 const TIME_STEP = 1/60;     // 60 FPS
 const SHIP_RADIUS = 1.5;    // Collision sphere radius

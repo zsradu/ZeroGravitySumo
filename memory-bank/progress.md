@@ -88,11 +88,6 @@
 1. `scripts/scene.js`: Added physics integration and thrust controls
 2. `index.html`: Added physics.js script reference
 
-### Next Steps:
-- Proceed with Step 6: Add collision detection
-- Implement sphere collision detection
-- Add collision response with velocity exchange
-
 ### Test Results:
 - Expected: Ship should move forward when Space is held
 - Expected: Movement should continue after releasing Space
@@ -153,16 +148,12 @@ When opening index.html in a browser, you should see:
   - 5 units above ship
   - Smooth position interpolation (0.1 lerp)
   - Smooth rotation interpolation (0.05 lerp)
+  - Camera orientation fixed relative to ship
+  - Proper downward tilt for centered view
 - Maintained performance with proper frame timing
-- Added proper camera following and transitions
 
 ### Files Modified:
 - `scripts/scene.js`: Added fixed timestep loop and camera behavior
-
-### Next Steps:
-- Step 9: Add AI bots
-- Step 10: Simulate dynamic bot joining and leaving
-- Step 11: Implement round timer
 
 ### Expected Test Results:
 When opening index.html in a browser, you should see:
@@ -170,10 +161,47 @@ When opening index.html in a browser, you should see:
 2. Camera smoothly following the player's ship:
    - Positioned 10 units behind and 5 units above
    - Smoothly transitioning during movement
-   - Properly rotating to follow ship orientation
+   - Properly rotating with ship orientation
+   - Ship's direction centered in view
 3. All previous functionality should remain intact:
    - Ship movement and rotation
    - Zero-gravity physics
    - Thrust and boost mechanics
    - Collision detection and response
+   - Safe zone boundaries
+
+## Step 9: AI Bots Implementation ✓
+- Created bot system with state machine:
+  - State updates every 1 second
+  - Avoid state: Active within 5 units of other ships
+  - Attack state: 20% chance per second when safe
+  - Stay center: Default state
+- Added 6 red bot ships with:
+  - Random initial positions
+  - Physics-based movement
+  - Collision detection with all ships
+  - Proper boundary checking
+
+### Files Created:
+- `scripts/bots.js`: Bot class with state machine and behavior
+
+### Files Modified:
+- `scripts/scene.js`: Added bot management and collision system
+- `index.html`: Added bots.js script
+
+### Expected Test Results:
+When opening index.html in a browser, you should see:
+1. Six red bot ships in random positions
+2. Bots exhibiting different behaviors:
+   - Avoiding nearby ships (within 5 units)
+   - Occasionally attacking distant ships
+   - Generally staying near the arena center
+3. Proper physics interactions:
+   - Collisions between all ships
+   - Boundary removal for out-of-bounds ships
+   - Thrust and boost mechanics
+4. All previous functionality should remain intact:
+   - Player ship controls
+   - Camera following
+   - Physics and collisions
    - Safe zone boundaries
