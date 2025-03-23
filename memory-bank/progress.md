@@ -236,3 +236,79 @@ When opening index.html in a browser, you should see:
    - Physics and collisions
    - Safe zone boundaries
    - Camera following
+
+## Step 11: Round Timer Implementation ✓
+- Created game management system with:
+  - 2-minute countdown timer
+  - Boost cooldown UI
+  - Game state tracking
+- Added UI elements:
+  - Timer: Top-right corner (Arial 24px bold white)
+  - Boost bar: Bottom-center (100x10px)
+  - Boost label: Next to boost bar
+- Implemented proper UI styling:
+  - Clear visibility against game background
+  - Smooth transitions for boost bar
+  - Proper spacing and alignment
+
+### Files Created:
+1. `scripts/game.js`: Game state and UI management
+
+### Files Modified:
+1. `scripts/scene.js`: Added game integration
+2. `index.html`: Added game.js script
+
+### Expected Test Results:
+When opening index.html in a browser, you should see:
+1. A 2-minute countdown timer in the top-right corner
+2. A boost cooldown bar in the bottom-center with "Boost" label
+3. Timer counting down properly
+4. Boost bar changing color (green/red) based on cooldown
+5. All previous functionality remaining intact
+
+## Step 12: Win/Lose Conditions ✓
+- Implemented game state management:
+  - Win conditions:
+    - Last ship in safe zone
+    - Survive until timer end
+  - Lose condition:
+    - Ship moves outside safe zone
+- Added game over UI:
+  - Large centered message ("You Won!" or "You Lost")
+  - Win counter display
+  - Green "Play again" button (appears after 3s)
+- Added game reset functionality:
+  - Proper cleanup of existing ships
+  - Reset of player position
+  - Creation of new bots
+  - Reset of game timer
+- Enhanced bot behavior:
+  - Aggressive movement and targeting
+  - Boundary avoidance system (40-unit safety threshold)
+  - Emergency maneuvers when near boundary
+  - Dynamic target selection
+
+### Files Modified:
+1. `scripts/game.js`: Added win/lose conditions and UI
+2. `scripts/scene.js`: Added game reset handling
+3. `scripts/bots.js`: Enhanced bot behavior and safety features
+
+### Expected Test Results:
+When opening index.html in a browser, you should see:
+1. Game ending appropriately on win/lose conditions:
+   - Win when last ship in arena
+   - Win when timer reaches 0:00
+   - Lose when crossing boundary
+2. Clear game over message with:
+   - Appropriate win/lose text
+   - Current win count
+   - "Play again" button after 3 seconds
+3. Smooth game reset when clicking "Play again":
+   - Player ship respawning in safe position
+   - New bots appearing
+   - Timer resetting to 2:00
+4. Bots exhibiting improved behavior:
+   - Aggressive pursuit of targets
+   - Active boundary avoidance
+   - Emergency maneuvers when in danger zone
+5. All previous functionality remaining intact
