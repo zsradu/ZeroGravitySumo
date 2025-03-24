@@ -20,15 +20,17 @@ Feature 1: Web Mobile Support with Touch Controls
 Feature 2: Pre-Game Menu
 ------------------------
 
-**Objective**: Create an engaging pre-game menu with the game title, how-to-play instructions, a "Play" button, and a "Beta" tag.
+**Objective**: Create an engaging pre-game menu with the game title, how-to-play instructions, a "Play" button, a "Beta" tag, and a "Made entirely with gen-AI" info text.
 
 *   Display "Zero Gravity Sumo" prominently at the top of the pre-game menu screen.
+
+*   Add a large, clickable "Play" button beneath the title that starts the game when pressed.
     
-*   Below the title, include a "How to Play" section describing the controls (joystick, thrust, boost) and the objective (push opponents out of the arena while staying inside).
+*   Below the Play button, include a "How to Play" section describing the controls (joystick, thrust, boost) and the objective (push opponents out of the arena while staying inside).
     
-*   Add a large, clickable "Play" button beneath the instructions that starts the game when pressed.
-    
-*   Include a small "Beta version" label near the title or in a corner to indicate the game is in early development.
+*   Include a small "Beta version" label near the title to indicate the game is in early development.
+
+*   In the bottom right corner, add a tag that says "Made 100% with generative AI".
     
 
 Feature 3: Visual Effects

@@ -1,17 +1,11 @@
 class Game {
     constructor() {
-        // Round timer settings
-        this.roundDuration = 120000; // 2 minutes in milliseconds
-        this.roundStartTime = 0;
-        this.roundTimeRemaining = this.roundDuration;
+        this.gameState = 'playing';
+        this.roundTime = 120; // 2 minutes in seconds
+        this.timeRemaining = this.roundTime;
+        this.lastUpdateTime = performance.now();
         
-        // Game state
-        this.gameState = 'playing'; // 'playing', 'won', 'lost'
-        this.winCount = 0;
-        this.gameEndTime = 0;
-        this.GAME_END_DELAY = 1500; // 1.5 seconds before showing play again
-        
-        // UI elements
+        // Create UI elements
         this.createUI();
     }
     
@@ -27,161 +21,134 @@ class Game {
         this.timerDisplay.style.fontWeight = 'bold';
         document.body.appendChild(this.timerDisplay);
         
-        // Create boost container (holds both label and bar)
-        const boostContainer = document.createElement('div');
-        boostContainer.style.position = 'absolute';
-        boostContainer.style.bottom = '20px';
-        boostContainer.style.left = '50%';
-        boostContainer.style.transform = 'translateX(-50%)';
-        boostContainer.style.display = 'flex';
-        boostContainer.style.alignItems = 'center';
-        boostContainer.style.gap = '10px';
-        document.body.appendChild(boostContainer);
-        
-        // Create boost label
-        const boostLabel = document.createElement('div');
-        boostLabel.textContent = 'Boost';
-        boostLabel.style.color = 'white';
-        boostLabel.style.fontFamily = 'Arial';
-        boostLabel.style.fontSize = '16px';
-        boostLabel.style.fontWeight = 'bold';
-        boostContainer.appendChild(boostLabel);
-        
-        // Create boost bar container
+        // Create boost cooldown bar
         this.boostBar = document.createElement('div');
+        this.boostBar.style.position = 'absolute';
+        this.boostBar.style.bottom = '20px';
+        this.boostBar.style.left = '50%';
+        this.boostBar.style.transform = 'translateX(-50%)';
         this.boostBar.style.width = '100px';
         this.boostBar.style.height = '10px';
-        this.boostBar.style.backgroundColor = 'rgba(0, 0, 0, 0.2)';
-        boostContainer.appendChild(this.boostBar);
+        this.boostBar.style.backgroundColor = '#333';
+        this.boostBar.style.border = '1px solid #666';
+        document.body.appendChild(this.boostBar);
         
-        // Create boost bar fill
-        this.boostBarFill = document.createElement('div');
-        this.boostBarFill.style.width = '100%';
-        this.boostBarFill.style.height = '100%';
-        this.boostBarFill.style.backgroundColor = '#00FF00';
-        this.boostBarFill.style.transition = 'width 0.1s linear';
-        this.boostBar.appendChild(this.boostBarFill);
+        // Create boost fill
+        this.boostFill = document.createElement('div');
+        this.boostFill.style.width = '100%';
+        this.boostFill.style.height = '100%';
+        this.boostFill.style.backgroundColor = '#00ff00';
+        this.boostBar.appendChild(this.boostFill);
         
-        // Create game over container
-        this.gameOverContainer = document.createElement('div');
-        this.gameOverContainer.style.position = 'absolute';
-        this.gameOverContainer.style.top = '50%';
-        this.gameOverContainer.style.left = '50%';
-        this.gameOverContainer.style.transform = 'translate(-50%, -50%)';
-        this.gameOverContainer.style.display = 'none';
-        this.gameOverContainer.style.flexDirection = 'column';
-        this.gameOverContainer.style.alignItems = 'center';
-        this.gameOverContainer.style.gap = '20px';
-        this.gameOverContainer.style.transition = 'opacity 0.5s';
-        document.body.appendChild(this.gameOverContainer);
+        // Create boost label
+        this.boostLabel = document.createElement('div');
+        this.boostLabel.style.position = 'absolute';
+        this.boostLabel.style.bottom = '35px';
+        this.boostLabel.style.left = '50%';
+        this.boostLabel.style.transform = 'translateX(-50%)';
+        this.boostLabel.style.color = 'white';
+        this.boostLabel.style.fontFamily = 'Arial';
+        this.boostLabel.style.fontSize = '14px';
+        this.boostLabel.textContent = 'BOOST';
+        document.body.appendChild(this.boostLabel);
         
-        // Create game over message
-        this.gameOverMessage = document.createElement('div');
-        this.gameOverMessage.style.color = 'white';
-        this.gameOverMessage.style.fontFamily = 'Arial';
-        this.gameOverMessage.style.fontSize = '48px';
-        this.gameOverMessage.style.fontWeight = 'bold';
-        this.gameOverContainer.appendChild(this.gameOverMessage);
-        
-        // Create win counter
-        this.winCountDisplay = document.createElement('div');
-        this.winCountDisplay.style.color = 'white';
-        this.winCountDisplay.style.fontFamily = 'Arial';
-        this.winCountDisplay.style.fontSize = '24px';
-        this.winCountDisplay.style.marginTop = '-10px';
-        this.gameOverContainer.appendChild(this.winCountDisplay);
-        
-        // Create play again button
-        this.playAgainButton = document.createElement('button');
-        this.playAgainButton.textContent = 'Play again';
-        this.playAgainButton.style.backgroundColor = '#00FF00';
-        this.playAgainButton.style.color = 'black';
-        this.playAgainButton.style.border = 'none';
-        this.playAgainButton.style.padding = '15px 30px';
-        this.playAgainButton.style.borderRadius = '5px';
-        this.playAgainButton.style.fontSize = '20px';
-        this.playAgainButton.style.cursor = 'pointer';
-        this.playAgainButton.style.fontWeight = 'bold';
-        this.playAgainButton.style.display = 'none';
-        this.playAgainButton.onclick = () => this.startNewGame();
-        this.gameOverContainer.appendChild(this.playAgainButton);
+        // Hide UI initially
+        this.hideUI();
+    }
+    
+    showUI() {
+        this.timerDisplay.style.display = 'block';
+        this.boostBar.style.display = 'block';
+        this.boostLabel.style.display = 'block';
+    }
+    
+    hideUI() {
+        this.timerDisplay.style.display = 'none';
+        this.boostBar.style.display = 'none';
+        this.boostLabel.style.display = 'none';
     }
     
     startRound() {
-        this.roundStartTime = performance.now();
-        this.roundTimeRemaining = this.roundDuration;
         this.gameState = 'playing';
-        this.gameOverContainer.style.display = 'none';
-        this.playAgainButton.style.display = 'none';
-    }
-    
-    startNewGame() {
-        this.startRound();
-        // Emit an event that scene.js can listen to for resetting the game
-        let event = new CustomEvent('gameReset');
-        document.dispatchEvent(event);
+        this.timeRemaining = this.roundTime;
+        this.lastUpdateTime = performance.now();
+        this.showUI();
     }
     
     updateTimer() {
-        const currentTime = performance.now();
-        this.roundTimeRemaining = Math.max(0, this.roundDuration - (currentTime - this.roundStartTime));
-        
-        // Format time as MM:SS
-        const seconds = Math.ceil(this.roundTimeRemaining / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = seconds % 60;
-        this.timerDisplay.textContent = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-        
-        // Check if timer ran out (win condition)
-        if (this.roundTimeRemaining <= 0 && this.gameState === 'playing') {
-            this.handleWin();
+        if (this.gameState === 'playing') {
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - this.lastUpdateTime) / 1000; // Convert to seconds
+            this.lastUpdateTime = currentTime;
+            
+            this.timeRemaining -= deltaTime;
+            
+            if (this.timeRemaining <= 0) {
+                this.handleLoss();
+            } else {
+                const minutes = Math.floor(this.timeRemaining / 60);
+                const seconds = Math.floor(this.timeRemaining % 60);
+                this.timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
         }
-        
-        return this.roundTimeRemaining > 0;
     }
     
-    updateBoostBar(boostCooldown, maxCooldown) {
-        const percentage = ((maxCooldown - boostCooldown) / maxCooldown) * 100;
-        this.boostBarFill.style.width = `${percentage}%`;
-        this.boostBarFill.style.backgroundColor = boostCooldown > 0 ? '#FF0000' : '#00FF00';
+    updateBoostBar(cooldown, maxCooldown) {
+        const percentage = ((maxCooldown - cooldown) / maxCooldown) * 100;
+        this.boostFill.style.width = `${percentage}%`;
     }
     
     handleWin() {
         this.gameState = 'won';
-        this.winCount++;
-        this.showGameOver('You Won!');
+        this.hideUI();
+        this.showEndScreen('You Win!', true);
     }
     
     handleLoss() {
-        if (this.gameState === 'playing') {
-            this.gameState = 'lost';
-            this.showGameOver('You Lost');
-        }
+        this.gameState = 'lost';
+        this.hideUI();
+        this.showEndScreen('Game Over', false);
     }
     
-    showGameOver(message) {
-        this.gameEndTime = performance.now();
-        this.gameOverContainer.style.display = 'flex';
-        this.gameOverContainer.style.opacity = '0';
-        this.gameOverMessage.textContent = message;
-        this.winCountDisplay.textContent = `Wins: ${this.winCount}`;
+    showEndScreen(message, isWin) {
+        const endScreen = document.createElement('div');
+        endScreen.style.position = 'absolute';
+        endScreen.style.top = '50%';
+        endScreen.style.left = '50%';
+        endScreen.style.transform = 'translate(-50%, -50%)';
+        endScreen.style.textAlign = 'center';
+        endScreen.style.color = isWin ? '#00ff00' : '#ff0000';
+        endScreen.style.fontFamily = 'Arial';
+        endScreen.style.fontSize = '48px';
+        endScreen.style.fontWeight = 'bold';
+        endScreen.innerHTML = `
+            ${message}<br>
+            <button id="playAgainBtn" style="
+                margin-top: 20px;
+                padding: 10px 20px;
+                font-size: 24px;
+                background-color: ${isWin ? '#00ff00' : '#ff4444'};
+                color: black;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            ">Play Again</button>
+        `;
+        document.body.appendChild(endScreen);
         
-        // Fade in the game over message
-        requestAnimationFrame(() => {
-            this.gameOverContainer.style.opacity = '1';
+        // Add click handler for Play Again button
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            endScreen.remove();
+            // Dispatch reset event with playAgain flag
+            document.dispatchEvent(new CustomEvent('gameReset', { 
+                detail: { playAgain: true }
+            }));
         });
-        
-        // Show play again button after delay
-        setTimeout(() => {
-            this.playAgainButton.style.display = 'block';
-        }, this.GAME_END_DELAY);
     }
     
-    isLastShipInSafeZone(playerShipInBounds, botCount) {
-        if (this.gameState === 'playing' && playerShipInBounds && botCount === 0) {
+    isLastShipInSafeZone(playerInBounds, activeBotCount) {
+        if (playerInBounds && activeBotCount === 0) {
             this.handleWin();
-            return true;
         }
-        return false;
     }
-} 
+}

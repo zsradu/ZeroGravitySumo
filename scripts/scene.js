@@ -1,9 +1,14 @@
-// import { Controls } from './controls.js';
-
 // Initialize Three.js scene, camera, and renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+
+// Set renderer size and add to document
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Initialize menu
+const menu = new Menu();
 
 // Add lighting to the scene
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
@@ -21,10 +26,15 @@ scene.add(pointLight);
 
 // Initialize game manager
 const game = new Game();
-game.startRound();
+
+// Variables to track game state
+let gameInitialized = false;
+let gameRunning = false;
 
 // Initialize the game
 async function initGame() {
+    if (gameInitialized) return;
+    
     console.log('Starting game initialization...');
     try {
         // Load assets first
@@ -35,7 +45,7 @@ async function initGame() {
         // Create player ship
         console.log('Creating player ship...');
         const shipAsset = assetManager.getShipGeometry(true);
-        playerShip = new THREE.Mesh(shipAsset.geometry, shipAsset.material.clone()); // Clone material to allow individual coloring
+        playerShip = new THREE.Mesh(shipAsset.geometry, shipAsset.material.clone());
         rotationAxes = new THREE.Group();
         scene.add(rotationAxes);
         rotationAxes.add(playerShip);
@@ -43,7 +53,7 @@ async function initGame() {
         
         // Rotate ship to point "forward" along its length and flip 180 degrees
         playerShip.rotation.x = Math.PI / 2;
-        playerShip.rotation.z = Math.PI; // 180-degree rotation
+        playerShip.rotation.z = Math.PI;
         
         // Initialize physics for player
         console.log('Initializing physics...');
@@ -57,33 +67,51 @@ async function initGame() {
         createInitialBots();
         console.log('Bots created successfully');
         
-        // Start the game loop
-        console.log('Starting game loop...');
-        animate();
+        gameInitialized = true;
         console.log('Game initialized successfully');
+        
+        // Start animation loop
+        animate();
+        
+        // Show menu after initialization
+        menu.show();
     } catch (error) {
         console.error('Error during game initialization:', error);
         throw error;
     }
 }
 
-// Start the game
-initGame().catch(error => {
-    console.error('Failed to initialize game:', error);
-    // Show error message to user
-    const errorDiv = document.createElement('div');
-    errorDiv.style.position = 'absolute';
-    errorDiv.style.top = '50%';
-    errorDiv.style.left = '50%';
-    errorDiv.style.transform = 'translate(-50%, -50%)';
-    errorDiv.style.color = 'white';
-    errorDiv.style.fontSize = '24px';
-    errorDiv.textContent = 'Failed to load game assets. Please refresh the page.';
-    document.body.appendChild(errorDiv);
-}); 
+// Start game when Play button is clicked
+document.addEventListener('startGame', () => {
+    console.log('Start game event received');
+    if (!gameInitialized) {
+        console.log('Initializing game first...');
+        initGame().then(() => {
+            console.log('Game initialized, starting game...');
+            gameRunning = true;
+            game.startRound();
+        }).catch(error => {
+            console.error('Failed to initialize game:', error);
+        });
+    } else {
+        console.log('Game already initialized, starting game...');
+        gameRunning = true;
+        game.startRound();
+    }
+});
 
 // Listen for game reset event
-document.addEventListener('gameReset', () => {
+document.addEventListener('gameReset', (event) => {
+    // Check if this is a "Play Again" reset
+    const isPlayAgain = event.detail?.playAgain || false;
+    
+    if (!isPlayAgain) {
+        // Only show menu if not playing again
+        menu.show();
+    }
+    
+    gameRunning = false;
+    
     // Remove all existing bots
     allShips.forEach(ship => {
         if (ship !== rotationAxes) {
@@ -115,6 +143,12 @@ document.addEventListener('gameReset', () => {
     
     // Reset next bot update time
     nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
+    
+    // If playing again, start the game immediately
+    if (isPlayAgain) {
+        gameRunning = true;
+        game.startRound();
+    }
 });
 
 // Camera following parameters
@@ -124,10 +158,6 @@ const CAMERA_POSITION_LERP = 0.1;  // Position smoothing
 const CAMERA_ROTATION_LERP = 0.05; // Rotation smoothing
 const TARGET_FRAMERATE = 60;
 const CAMERA_TIME_STEP = 1000 / TARGET_FRAMERATE; // 16.67ms for 60 FPS
-
-// Set renderer size and add to document
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
 
 // Create the safe zone sphere
 const safeZoneGeometry = new THREE.SphereGeometry(50, 32, 32);
@@ -228,117 +258,106 @@ function animate() {
     
     // Calculate frame timing
     const currentTime = performance.now();
-    const deltaTime = Math.min(currentTime - lastFrameTime, 100); // Cap at 100ms
+    const deltaTime = Math.min(currentTime - lastFrameTime, 100);
     lastFrameTime = currentTime;
     
-    // Update game timer and boost UI
-    game.updateTimer();
-    game.updateBoostBar(shipPhysics.boostCooldown, shipPhysics.BOOST_COOLDOWN);
-    
-    // Only update physics if game is in playing state
-    if (game.gameState === 'playing') {
-        // Get rotation input from controls
-        const rotation = controls.getRotationInput();
+    // Only update game if it's running
+    if (gameRunning) {
+        // Update game timer and boost UI
+        game.updateTimer();
+        game.updateBoostBar(shipPhysics.boostCooldown, shipPhysics.BOOST_COOLDOWN);
         
-        // Apply rotation
-        if (rotation.x !== 0 || rotation.y !== 0) {
-            tempQuaternion.copy(rotationAxes.quaternion);
+        // Only update physics if game is in playing state
+        if (game.gameState === 'playing') {
+            // Get rotation input from controls
+            const rotation = controls.getRotationInput();
             
-            // Pitch (up/down)
-            if (rotation.x !== 0) {
-                pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED * rotation.x);
-                rotationAxes.quaternion.multiply(pitchQuaternion);
+            // Apply rotation
+            if (rotation.x !== 0 || rotation.y !== 0) {
+                tempQuaternion.copy(rotationAxes.quaternion);
+                
+                // Pitch (up/down)
+                if (rotation.x !== 0) {
+                    pitchQuaternion.setFromAxisAngle(rightVector, ROTATION_SPEED * rotation.x);
+                    rotationAxes.quaternion.multiply(pitchQuaternion);
+                }
+                
+                // Yaw (left/right)
+                if (rotation.y !== 0) {
+                    yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED * rotation.y);
+                    rotationAxes.quaternion.multiply(yawQuaternion);
+                }
             }
             
-            // Yaw (left/right)
-            if (rotation.y !== 0) {
-                yawQuaternion.setFromAxisAngle(upVector, ROTATION_SPEED * rotation.y);
-                rotationAxes.quaternion.multiply(yawQuaternion);
+            // Handle thrust and boost
+            if (controls.isBoosting()) {
+                shipPhysics.startThrust(); // Always thrust when boosting
+                shipPhysics.tryBoost();
+            } else if (controls.isThrusting()) {
+                shipPhysics.startThrust();
+            } else {
+                shipPhysics.stopThrust();
             }
-        }
-        
-        // Handle thrust and boost
-        if (controls.isBoosting()) {
-            shipPhysics.startThrust(); // Always thrust when boosting
-            shipPhysics.tryBoost();
-        } else if (controls.isThrusting()) {
-            shipPhysics.startThrust();
-        } else {
-            shipPhysics.stopThrust();
-        }
-        
-        // Update player ship physics
-        const playerInBounds = shipPhysics.update(rotationAxes);
-        if (!playerInBounds) {
-            game.handleLoss();
-        }
-        
-        // Update bot physics and check for out-of-bounds
-        let activeBotCount = 0;
-        for (let i = allShips.length - 1; i >= 0; i--) {
-            const ship = allShips[i];
-            if (ship !== rotationAxes) {
-                const bot = ship.userData?.bot;
-                if (bot) {
-                    // Update bot behavior first
-                    bot.update(allShips, camera);
-                    
-                    // Then update physics
-                    const botInBounds = bot.physics.update(ship);
-                    if (!botInBounds) {
-                        scene.remove(ship);
-                        allShips.splice(i, 1);
-                        const botIndex = bots.indexOf(bot);
-                        if (botIndex > -1) {
-                            bots.splice(botIndex, 1);
+            
+            // Update player ship physics
+            const playerInBounds = shipPhysics.update(rotationAxes);
+            if (!playerInBounds) {
+                game.handleLoss();
+            }
+            
+            // Update bot physics and check for out-of-bounds
+            let activeBotCount = 0;
+            for (let i = allShips.length - 1; i >= 0; i--) {
+                const ship = allShips[i];
+                if (ship !== rotationAxes) {
+                    const bot = ship.userData?.bot;
+                    if (bot) {
+                        // Update bot behavior first
+                        bot.update(allShips, camera);
+                        
+                        // Then update physics
+                        const botInBounds = bot.physics.update(ship);
+                        if (!botInBounds) {
+                            scene.remove(ship);
+                            allShips.splice(i, 1);
+                            const botIndex = bots.indexOf(bot);
+                            if (botIndex > -1) {
+                                bots.splice(botIndex, 1);
+                            }
+                        } else {
+                            activeBotCount++;
                         }
-                    } else {
-                        activeBotCount++;
                     }
                 }
             }
-        }
-        
-        // Check if player is last ship in safe zone
-        game.isLastShipInSafeZone(playerInBounds, activeBotCount);
-        
-        // Check for collisions between all ships
-        for (let i = 0; i < allShips.length; i++) {
-            for (let j = i + 1; j < allShips.length; j++) {
-                const ship1 = allShips[i];
-                const ship2 = allShips[j];
-                const physics1 = ship1 === rotationAxes ? shipPhysics : ship1.userData?.bot?.physics;
-                const physics2 = ship2 === rotationAxes ? shipPhysics : ship2.userData?.bot?.physics;
-                
-                if (physics1 && physics2) {
-                    physics1.checkCollision(ship1, physics2, ship2);
+            
+            // Check if player is last ship in safe zone
+            game.isLastShipInSafeZone(playerInBounds, activeBotCount);
+            
+            // Check for collisions between all ships
+            for (let i = 0; i < allShips.length; i++) {
+                for (let j = i + 1; j < allShips.length; j++) {
+                    const ship1 = allShips[i];
+                    const ship2 = allShips[j];
+                    const physics1 = ship1 === rotationAxes ? shipPhysics : ship1.userData?.bot?.physics;
+                    const physics2 = ship2 === rotationAxes ? shipPhysics : ship2.userData?.bot?.physics;
+                    
+                    if (physics1 && physics2) {
+                        physics1.checkCollision(ship1, physics2, ship2);
+                    }
                 }
             }
-        }
-        
-        // Check if it's time to update bot count
-        if (currentTime >= nextBotUpdateTime) {
-            // Randomly add or remove a bot to maintain MIN_BOTS to MAX_BOTS
-            const totalBots = bots.length;
             
-            if (totalBots < MIN_BOTS) {
-                // Add a bot if below minimum
-                createBot();
-            } else if (totalBots > MAX_BOTS) {
-                // Remove a random bot if above maximum
-                const indexToRemove = Math.floor(Math.random() * bots.length);
-                const botToRemove = bots[indexToRemove];
-                scene.remove(botToRemove.rotationAxes);
-                bots.splice(indexToRemove, 1);
-                const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
-                if (shipIndex > -1) {
-                    allShips.splice(shipIndex, 1);
-                }
-            } else {
-                // Randomly add or remove a bot
-                if (Math.random() < 0.5 && totalBots < MAX_BOTS) {
+            // Check if it's time to update bot count
+            if (currentTime >= nextBotUpdateTime) {
+                // Randomly add or remove a bot to maintain MIN_BOTS to MAX_BOTS
+                const totalBots = bots.length;
+                
+                if (totalBots < MIN_BOTS) {
+                    // Add a bot if below minimum
                     createBot();
-                } else if (totalBots > MIN_BOTS) {
+                } else if (totalBots > MAX_BOTS) {
+                    // Remove a random bot if above maximum
                     const indexToRemove = Math.floor(Math.random() * bots.length);
                     const botToRemove = bots[indexToRemove];
                     scene.remove(botToRemove.rotationAxes);
@@ -347,10 +366,24 @@ function animate() {
                     if (shipIndex > -1) {
                         allShips.splice(shipIndex, 1);
                     }
+                } else {
+                    // Randomly add or remove a bot
+                    if (Math.random() < 0.5 && totalBots < MAX_BOTS) {
+                        createBot();
+                    } else if (totalBots > MIN_BOTS) {
+                        const indexToRemove = Math.floor(Math.random() * bots.length);
+                        const botToRemove = bots[indexToRemove];
+                        scene.remove(botToRemove.rotationAxes);
+                        bots.splice(indexToRemove, 1);
+                        const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
+                        if (shipIndex > -1) {
+                            allShips.splice(shipIndex, 1);
+                        }
+                    }
                 }
+                
+                nextBotUpdateTime = currentTime + BOT_UPDATE_INTERVAL;
             }
-            
-            nextBotUpdateTime = currentTime + BOT_UPDATE_INTERVAL;
         }
     }
     
@@ -359,14 +392,7 @@ function animate() {
     
     // Render the scene
     renderer.render(scene, camera);
-    
-    // Remove this after first frame
-    if (animate.firstFrame) {
-        console.log('First animation frame completed successfully');
-        animate.firstFrame = false;
-    }
 }
-animate.firstFrame = true;
 
 // Camera update function
 function updateCamera() {
@@ -407,3 +433,18 @@ window.addEventListener('resize', () => {
     
     renderer.setSize(width, height);
 }, false);
+
+// Start initialization
+initGame().catch(error => {
+    console.error('Failed to initialize game:', error);
+    // Show error message to user
+    const errorDiv = document.createElement('div');
+    errorDiv.style.position = 'absolute';
+    errorDiv.style.top = '50%';
+    errorDiv.style.left = '50%';
+    errorDiv.style.transform = 'translate(-50%, -50%)';
+    errorDiv.style.color = 'white';
+    errorDiv.style.fontSize = '24px';
+    errorDiv.textContent = 'Failed to load game assets. Please refresh the page.';
+    document.body.appendChild(errorDiv);
+});
