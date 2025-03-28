@@ -53,8 +53,8 @@ class Bot {
         
         // Movement constants
         this.MOVE_SPEED = 4.0; // 4 units per second
-        this.MOVE_PHASE_DURATION = 3000; // 3 seconds
-        this.STOP_PHASE_DURATION = 3000; // 3 seconds
+        this.MOVE_PHASE_DURATION = 6000; // 3 seconds
+        this.STOP_PHASE_DURATION = 6000; // 3 seconds
         this.DIRECTION_ADJUSTMENT_RATE = 0.10; // 10% per frame
         
         // Movement state

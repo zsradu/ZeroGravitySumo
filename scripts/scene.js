@@ -200,10 +200,15 @@ let allShips = [];
 // Create initial bots with random positions
 const bots = [];
 function createBot() {
+    // Generate random angles for spherical coordinates
+    const phi = Math.random() * Math.PI * 2; // Azimuthal angle (around y-axis)
+    const theta = Math.acos(2 * Math.random() - 1); // Polar angle (from y-axis)
+    
+    // Convert spherical coordinates to Cartesian with radius 40
     const position = new THREE.Vector3(
-        (Math.random() - 0.5) * 40, // x: -20 to 20
-        (Math.random() - 0.5) * 40, // y: -20 to 20
-        (Math.random() - 0.5) * 40  // z: -20 to 20
+        40 * Math.sin(theta) * Math.cos(phi), // x
+        40 * Math.cos(theta),                 // y
+        40 * Math.sin(theta) * Math.sin(phi)  // z
     );
     const bot = new Bot(scene, position);
     bots.push(bot);
