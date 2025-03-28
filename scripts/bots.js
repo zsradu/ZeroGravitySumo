@@ -51,15 +51,9 @@ class Bot {
         // Initialize physics
         this.physics = new Physics();
         
-        // Movement constants
-        this.MOVE_SPEED = 4.0; // 4 units per second
-        this.MOVE_PHASE_DURATION = 6000; // 3 seconds
-        this.STOP_PHASE_DURATION = 6000; // 3 seconds
-        this.DIRECTION_ADJUSTMENT_RATE = 0.10; // 10% per frame
-        
         // Movement state
         this.currentPhase = 'moving';
-        this.phaseTimer = this.MOVE_PHASE_DURATION;
+        this.phaseTimer = levelManager.getBotStopDuration();
         this.lastPosition = position.clone();
         this.isRecoveringFromCollision = false;
         
@@ -76,7 +70,7 @@ class Bot {
         const toCenter = this.rotationAxes.position.clone().normalize();
         const initialDirection = new THREE.Vector3();
         initialDirection.crossVectors(toCenter, new THREE.Vector3(0, 1, 0)).normalize();
-        this.physics.velocity.copy(initialDirection.multiplyScalar(this.MOVE_SPEED));
+        this.physics.velocity.copy(initialDirection.multiplyScalar(levelManager.getBotSpeed()));
     }
     
     update(otherShips, camera) {
@@ -86,7 +80,7 @@ class Bot {
         // Check for significant position change (possible collision)
         const currentPosition = this.rotationAxes.position;
         const moveDistance = currentPosition.distanceTo(this.lastPosition);
-        const expectedMove = this.MOVE_SPEED / 30; // More lenient collision detection
+        const expectedMove = levelManager.getBotSpeed() / 30; // More lenient collision detection
         
         if (moveDistance > expectedMove && !this.isRecoveringFromCollision) {
             this.isRecoveringFromCollision = true;
@@ -102,7 +96,7 @@ class Bot {
             // Switch phases
             this.currentPhase = this.currentPhase === 'moving' ? 'stopped' : 'moving';
             this.phaseTimer = this.currentPhase === 'moving' ? 
-                this.MOVE_PHASE_DURATION : this.STOP_PHASE_DURATION;
+                levelManager.getBotStopDuration() : levelManager.getBotStopDuration();
         }
         
         if (!this.isRecoveringFromCollision) {
@@ -110,7 +104,7 @@ class Bot {
             const toCenter = currentPosition.clone().normalize();
             const idealDirection = new THREE.Vector3();
             idealDirection.crossVectors(toCenter, new THREE.Vector3(0, 1, 0)).normalize();
-            idealDirection.multiplyScalar(this.MOVE_SPEED);
+            idealDirection.multiplyScalar(levelManager.getBotSpeed());
             
             if (this.currentPhase === 'moving') {
                 // Smoothly adjust velocity towards ideal direction
@@ -123,7 +117,7 @@ class Bot {
                 
                 // Adjust direction by percentage of angle
                 if (angle > 0.01) {
-                    const adjustmentAngle = angle * this.DIRECTION_ADJUSTMENT_RATE;
+                    const adjustmentAngle = angle * 0.1; // 10% adjustment per frame
                     const rotationAxis = new THREE.Vector3();
                     rotationAxis.crossVectors(currentDir, idealDir).normalize();
                     
@@ -133,7 +127,7 @@ class Bot {
                     
                     // Apply rotation to velocity
                     this.physics.velocity.applyQuaternion(rotationQuaternion);
-                    this.physics.velocity.normalize().multiplyScalar(this.MOVE_SPEED);
+                    this.physics.velocity.normalize().multiplyScalar(levelManager.getBotSpeed());
                 }
             } else {
                 // In stopped phase, gradually reduce velocity
@@ -141,7 +135,7 @@ class Bot {
             }
         } else {
             // Check if recovered from collision
-            if (this.physics.velocity.length() < this.MOVE_SPEED * 0.5) {
+            if (this.physics.velocity.length() < levelManager.getBotSpeed() * 0.5) {
                 this.isRecoveringFromCollision = false;
                 this.orbitRadius = currentPosition.length(); // Update orbit radius after recovery
             }

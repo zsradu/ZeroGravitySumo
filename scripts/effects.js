@@ -1,5 +1,3 @@
-// import * as THREE from 'three';
-
 class ParticleSystem {
     constructor(scene) {
         this.scene = scene;
@@ -149,16 +147,3 @@ class ParticleSystem {
         this.activeSystems = this.activeSystems.filter(system => system.update(currentTime));
     }
 }
-
-// let effectsManager = null;
-
-// export function initEffectsManager(scene) {
-//     if (!effectsManager) {
-//         effectsManager = new ParticleSystem(scene);
-//     }
-//     return effectsManager;
-// }
-
-// export function getEffectsManager() {
-//     return effectsManager;
-// } 
