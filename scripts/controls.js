@@ -183,8 +183,8 @@ class Controls {
         if (this.isMobile) {
             const joystickInput = this.joystick.getInput();
             return {
-                x: -joystickInput.y, // Pitch (up/down)
-                y: -joystickInput.x  // Yaw (left/right)
+                x: -joystickInput.y * 0.5, // Pitch (up/down)
+                y: -joystickInput.x * 0.5 // Yaw (left/right)
             };
         } else {
             return {

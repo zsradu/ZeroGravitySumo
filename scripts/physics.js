@@ -1,9 +1,9 @@
 // Physics constants
-const NORMAL_THRUST = 10.0;  // units/s²
+const NORMAL_THRUST = 15.0;  // units/s²
 const BOOST_THRUST = 40.0;   // units/s²
 const DAMPING = 0.99;       // per frame
 const TIME_STEP = 1/60;     // 60 FPS
-const SHIP_RADIUS = 1.5;    // Collision sphere radius
+const SHIP_RADIUS = 2.0;    // Collision sphere radius
 const COLLISION_SHAKE_AMPLITUDE = 0.5;
 const COLLISION_SHAKE_DURATION = 0.3;
 const SAFE_ZONE_RADIUS = 50; // Arena boundary radius
@@ -16,7 +16,7 @@ class Physics {
         this.boostTimeLeft = 0;
         this.boostCooldown = 0;
         this.BOOST_DURATION = 2;     // seconds
-        this.BOOST_COOLDOWN = 10;    // seconds
+        this.BOOST_COOLDOWN = 5;    // seconds
         this.shakeTimeLeft = 0;      // Camera shake timer
         this.lastCollisionTime = 0;  // Prevent multiple collisions in same frame
         this.isOutOfBounds = false;  // Track if ship is out of bounds
