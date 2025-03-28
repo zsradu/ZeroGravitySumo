@@ -99,14 +99,24 @@ class Game {
     }
     
     handleWin() {
+        if (this.gameState !== 'playing') return;
         this.gameState = 'won';
-        this.hideUI();
+        
+        // Increment level
+        levelManager.handleGameWin();
+        
+        // Show win screen
         this.showEndScreen('You Win!', true);
     }
     
     handleLoss() {
+        if (this.gameState !== 'playing') return;
         this.gameState = 'lost';
-        this.hideUI();
+        
+        // Stay on same level
+        levelManager.handleGameLoss();
+        
+        // Show loss screen
         this.showEndScreen('Game Over', false);
     }
     
@@ -132,7 +142,7 @@ class Game {
                 border: none;
                 border-radius: 5px;
                 cursor: pointer;
-            ">Play Again</button>
+            ">${isWin ? 'Next Level!' : 'Try Again'}</button>
         `;
         document.body.appendChild(endScreen);
         
@@ -150,5 +160,28 @@ class Game {
         if (playerInBounds && activeBotCount === 0) {
             this.handleWin();
         }
+    }
+
+    reset() {
+        // Reset game state
+        this.gameState = 'menu';
+        this.roundStartTime = 0;
+        
+        // Reset level if returning to menu
+        levelManager.reset();
+        
+        // Dispatch reset event
+        const event = new CustomEvent('gameReset', {
+            detail: { playAgain: false }
+        });
+        document.dispatchEvent(event);
+    }
+
+    playAgain() {
+        // Dispatch reset event with playAgain flag
+        const event = new CustomEvent('gameReset', {
+            detail: { playAgain: true }
+        });
+        document.dispatchEvent(event);
     }
 }
