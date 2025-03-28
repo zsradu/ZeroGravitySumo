@@ -3,8 +3,8 @@ class LevelManager {
         this.currentLevel = 1;
         this.baseSpeed = 4.0;      // Base bot speed
         this.speedIncrement = 0.2; // Speed increase per level
-        this.baseStopDuration = 3000; // Base stop duration in ms
-        this.stopDurationDecrement = 500; // Stop duration decrease per level (0.5s)
+        this.baseStopDuration = 8000; // Base stop duration in ms
+        this.stopDurationDecrement = 1000; // Stop duration decrease per level (0.5s)
         
         // Create HUD element
         this.createHUD();
