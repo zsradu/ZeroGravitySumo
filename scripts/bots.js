@@ -10,22 +10,14 @@ class Bot {
         
         // Function to tint a material red while preserving its properties
         const tintMaterialRed = (material) => {
-            // Keep the texture map
             const textureMap = material.map;
-            
-            // Set material properties for PBR
-            material.metalness = 0; // Keep non-metallic
-            material.roughness = 0.67; // Keep original roughness
-            material.map = textureMap; // Preserve the texture map
-            
-            // Apply red tint while preserving texture
-            material.color.setRGB(1.0, 0.3, 0.3); // Reddish tint that allows texture to show
-            
-            // Make sure textures are enabled and updated
+            material.metalness = 0;
+            material.roughness = 0.67;
+            material.map = textureMap;
+            material.color.setRGB(1.0, 0.3, 0.3);
             if (material.map) {
                 material.map.needsUpdate = true;
             }
-            
             material.needsUpdate = true;
         };
         
@@ -33,14 +25,14 @@ class Bot {
         tintMaterialRed(botMaterialHigh);
         tintMaterialRed(botMaterialLow);
         
-        // Create both LOD meshes using the asset manager
+        // Create both LOD meshes
         this.highDetailMesh = new THREE.Mesh(highDetailAsset.geometry, botMaterialHigh);
         this.lowDetailMesh = new THREE.Mesh(lowDetailAsset.geometry, botMaterialLow);
         
         // Create LOD group
         this.lod = new THREE.LOD();
-        this.lod.addLevel(this.highDetailMesh, 0);    // Use high detail when close
-        this.lod.addLevel(this.lowDetailMesh, 30);    // Switch to low detail at 30 units
+        this.lod.addLevel(this.highDetailMesh, 0);
+        this.lod.addLevel(this.lowDetailMesh, 30);
         
         // Create rotation axes for the bot
         this.rotationAxes = new THREE.Group();
@@ -50,186 +42,130 @@ class Bot {
         
         // Rotate ship to point "forward" along its length and flip 180 degrees
         this.highDetailMesh.rotation.x = Math.PI / 2;
-        this.highDetailMesh.rotation.z = Math.PI; // 180-degree rotation around Z instead of Y
+        this.highDetailMesh.rotation.z = Math.PI;
         this.lowDetailMesh.rotation.x = Math.PI / 2;
-        this.lowDetailMesh.rotation.z = Math.PI; // 180-degree rotation around Z instead of Y
+        this.lowDetailMesh.rotation.z = Math.PI;
         
-        this.lod.position.set(0, 0, 0); // Reset position relative to rotationAxes
+        this.lod.position.set(0, 0, 0);
         
         // Initialize physics
         this.physics = new Physics();
         
-        // Bot state
-        this.state = 'attack';
-        this.lastStateChange = performance.now();
-        this.stateUpdateInterval = 500; // 0.5 second
+        // Movement constants
+        this.MOVE_SPEED = 4.0; // 4 units per second
+        this.MOVE_PHASE_DURATION = 3000; // 3 seconds
+        this.STOP_PHASE_DURATION = 3000; // 3 seconds
+        this.DIRECTION_ADJUSTMENT_RATE = 0.10; // 10% per frame
         
-        // Target for movement
-        this.targetPosition = new THREE.Vector3();
-        this.targetRotation = new THREE.Quaternion();
+        // Movement state
+        this.currentPhase = 'moving';
+        this.phaseTimer = this.MOVE_PHASE_DURATION;
+        this.lastPosition = position.clone();
+        this.isRecoveringFromCollision = false;
         
-        // Last target update
-        this.lastTargetUpdate = 0;
-        this.targetUpdateInterval = 100; // Update target 10 times per second
+        // Calculate initial orbit radius (distance from center)
+        this.orbitRadius = position.length();
+        if (this.orbitRadius === 0) {
+            // If spawned at center, move to default radius
+            this.orbitRadius = 40;
+            position.set(40, 0, 0);
+            this.rotationAxes.position.copy(position);
+        }
+
+        // Initialize movement direction
+        const toCenter = this.rotationAxes.position.clone().normalize();
+        const initialDirection = new THREE.Vector3();
+        initialDirection.crossVectors(toCenter, new THREE.Vector3(0, 1, 0)).normalize();
+        this.physics.velocity.copy(initialDirection.multiplyScalar(this.MOVE_SPEED));
     }
     
     update(otherShips, camera) {
-        const now = performance.now();
-        
         // Update LOD based on distance to camera
         this.lod.update(camera);
         
-        // Update state every interval
-        if (now - this.lastStateChange >= this.stateUpdateInterval) {
-            this.updateState(otherShips);
-            this.lastStateChange = now;
+        // Check for significant position change (possible collision)
+        const currentPosition = this.rotationAxes.position;
+        const moveDistance = currentPosition.distanceTo(this.lastPosition);
+        const expectedMove = this.MOVE_SPEED / 30; // More lenient collision detection
+        
+        if (moveDistance > expectedMove && !this.isRecoveringFromCollision) {
+            this.isRecoveringFromCollision = true;
+            // Let physics handle the collision response
         }
         
-        // Update target position more frequently
-        if (now - this.lastTargetUpdate >= this.targetUpdateInterval) {
-            this.updateTargetPosition(otherShips);
-            this.lastTargetUpdate = now;
+        // Update last position
+        this.lastPosition.copy(currentPosition);
+        
+        // Handle movement phases
+        this.phaseTimer -= 16.67; // Assume 60fps for timing
+        if (this.phaseTimer <= 0) {
+            // Switch phases
+            this.currentPhase = this.currentPhase === 'moving' ? 'stopped' : 'moving';
+            this.phaseTimer = this.currentPhase === 'moving' ? 
+                this.MOVE_PHASE_DURATION : this.STOP_PHASE_DURATION;
         }
         
-        // Execute current state behavior
-        this.executeBehavior();
+        if (!this.isRecoveringFromCollision) {
+            // Calculate ideal circular movement direction
+            const toCenter = currentPosition.clone().normalize();
+            const idealDirection = new THREE.Vector3();
+            idealDirection.crossVectors(toCenter, new THREE.Vector3(0, 1, 0)).normalize();
+            idealDirection.multiplyScalar(this.MOVE_SPEED);
+            
+            if (this.currentPhase === 'moving') {
+                // Smoothly adjust velocity towards ideal direction
+                const currentDir = this.physics.velocity.clone().normalize();
+                const idealDir = idealDirection.normalize();
+                
+                // Calculate angle between current and ideal direction
+                let angle = Math.acos(currentDir.dot(idealDir));
+                if (isNaN(angle)) angle = 0;
+                
+                // Adjust direction by percentage of angle
+                if (angle > 0.01) {
+                    const adjustmentAngle = angle * this.DIRECTION_ADJUSTMENT_RATE;
+                    const rotationAxis = new THREE.Vector3();
+                    rotationAxis.crossVectors(currentDir, idealDir).normalize();
+                    
+                    // Create rotation quaternion
+                    const rotationQuaternion = new THREE.Quaternion();
+                    rotationQuaternion.setFromAxisAngle(rotationAxis, adjustmentAngle);
+                    
+                    // Apply rotation to velocity
+                    this.physics.velocity.applyQuaternion(rotationQuaternion);
+                    this.physics.velocity.normalize().multiplyScalar(this.MOVE_SPEED);
+                }
+            } else {
+                // In stopped phase, gradually reduce velocity
+                this.physics.velocity.multiplyScalar(0.95);
+            }
+        } else {
+            // Check if recovered from collision
+            if (this.physics.velocity.length() < this.MOVE_SPEED * 0.5) {
+                this.isRecoveringFromCollision = false;
+                this.orbitRadius = currentPosition.length(); // Update orbit radius after recovery
+            }
+        }
+        
+        // Update ship rotation to face movement direction
+        if (this.physics.velocity.length() > 0.1) {
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyQuaternion(this.rotationAxes.quaternion);
+            
+            const targetDirection = this.physics.velocity.clone().normalize();
+            const rotationAxis = new THREE.Vector3();
+            rotationAxis.crossVectors(forward, targetDirection);
+            
+            if (rotationAxis.length() > 0.001) {
+                const rotationQuaternion = new THREE.Quaternion();
+                rotationQuaternion.setFromAxisAngle(rotationAxis.normalize(), 0.1);
+                this.rotationAxes.quaternion.multiply(rotationQuaternion);
+            }
+        }
         
         // Update physics
         const inBounds = this.physics.update(this.rotationAxes);
         return inBounds;
-    }
-    
-    updateState(otherShips) {
-        // Always be in attack state - we want aggressive bots
-        this.state = 'attack';
-    }
-    
-    updateTargetPosition(otherShips) {
-        // Check if we're too close to the boundary
-        const distanceFromCenter = this.rotationAxes.position.length();
-        const ARENA_RADIUS = 50;
-        const SAFETY_THRESHOLD = 40;
-        
-        if (distanceFromCenter > SAFETY_THRESHOLD) {
-            // If too close to boundary, target slightly inside the center
-            // Use the bot's current position to calculate a safe point towards center
-            const safeTarget = this.rotationAxes.position.clone()
-                .normalize()
-                .multiplyScalar(-20); // Target point 20 units towards center
-            this.targetPosition.copy(safeTarget);
-            return;
-        }
-        
-        // Normal targeting behavior when safe from boundary
-        let nearestDistance = Infinity;
-        let nearestShip = null;
-        
-        for (const ship of otherShips) {
-            if (ship === this.rotationAxes) continue;
-            
-            const distance = this.rotationAxes.position.distanceTo(ship.position);
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
-                nearestShip = ship;
-            }
-        }
-        
-        if (nearestShip) {
-            // Set target to intercept the nearest ship
-            const predictedPosition = nearestShip.position.clone();
-            // Add a small random offset to create more dynamic behavior
-            predictedPosition.add(new THREE.Vector3(
-                (Math.random() - 0.5) * 2,
-                (Math.random() - 0.5) * 2,
-                (Math.random() - 0.5) * 2
-            ));
-            
-            // If target would lead us too close to boundary, adjust it inward
-            const targetDistanceFromCenter = predictedPosition.length();
-            if (targetDistanceFromCenter > SAFETY_THRESHOLD) {
-                predictedPosition.normalize().multiplyScalar(SAFETY_THRESHOLD * 0.8); // Aim for 80% of safety threshold
-            }
-            
-            this.targetPosition.copy(predictedPosition);
-        } else {
-            // If no ships found, move towards center with random offset
-            this.targetPosition.set(
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20,
-                (Math.random() - 0.5) * 20
-            );
-        }
-    }
-    
-    executeBehavior() {
-        // Calculate direction to target
-        const toTarget = new THREE.Vector3();
-        toTarget.copy(this.targetPosition).sub(this.rotationAxes.position);
-        
-        // Check if we're too close to the boundary
-        const distanceFromCenter = this.rotationAxes.position.length();
-        const ARENA_RADIUS = 50;
-        const SAFETY_THRESHOLD = 40;
-        
-        // Calculate desired rotation
-        const forward = new THREE.Vector3(0, 0, -1);
-        forward.applyQuaternion(this.rotationAxes.quaternion);
-        
-        if (distanceFromCenter > SAFETY_THRESHOLD) {
-            // In danger zone - calculate direction to center
-            const toCenter = new THREE.Vector3(0, 0, 0).sub(this.rotationAxes.position).normalize();
-            const rotationAxis = new THREE.Vector3();
-            rotationAxis.crossVectors(forward, toCenter);
-            
-            // Apply faster rotation when in danger
-            if (rotationAxis.length() > 0.001) {
-                const rotationQuaternion = new THREE.Quaternion();
-                rotationQuaternion.setFromAxisAngle(rotationAxis.normalize(), 0.15); // Even faster rotation in danger
-                this.rotationAxes.quaternion.multiply(rotationQuaternion);
-            }
-            
-            // Check if we're facing roughly towards center
-            const angleToCenter = forward.angleTo(toCenter);
-            if (angleToCenter < Math.PI / 2) { // Thrust if pointing even roughly towards center
-                this.physics.startThrust();
-                this.physics.tryBoost(); // Always try to boost when in danger
-            }
-            return; // Skip normal behavior when in danger zone
-        }
-        
-        // Normal behavior when in safe zone
-        if (toTarget.length() > 0.1) {
-            const rotationAxis = new THREE.Vector3();
-            rotationAxis.crossVectors(forward, toTarget.normalize());
-            
-            // Apply rotation
-            if (rotationAxis.length() > 0.001) {
-                const rotationQuaternion = new THREE.Quaternion();
-                rotationQuaternion.setFromAxisAngle(rotationAxis.normalize(), 0.05);
-                this.rotationAxes.quaternion.multiply(rotationQuaternion);
-            }
-            
-            // Apply thrust based on alignment
-            const angle = forward.angleTo(toTarget);
-            if (angle < Math.PI / 3) { // Only thrust if roughly facing target
-                this.physics.startThrust();
-                if (angle < Math.PI / 4) { // Try to boost if well-aligned
-                    this.physics.tryBoost();
-                }
-            } else {
-                this.physics.stopThrust();
-            }
-        } else {
-            this.physics.stopThrust();
-        }
-    }
-    
-    checkCollisions(otherShips) {
-        for (const ship of otherShips) {
-            if (ship === this.rotationAxes) continue;
-            
-            this.physics.checkCollision(this.rotationAxes, ship.physics, ship);
-        }
     }
     
     remove(scene) {
