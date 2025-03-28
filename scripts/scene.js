@@ -139,12 +139,9 @@ document.addEventListener('gameReset', (event) => {
     }
     
     // Create new bots
-    for (let i = 0; i < MIN_BOTS; i++) {
+    for (let i = 0; i < levelManager.getNumberOfBots(); i++) {
         createBot();
     }
-    
-    // Reset next bot update time
-    nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
     
     // If playing again, start the game immediately
     if (isPlayAgain) {
@@ -186,13 +183,6 @@ const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 2 });
 const stars = new THREE.Points(starGeometry, starMaterial);
 scene.add(stars);
 
-// Bot management constants
-const MIN_BOTS = 2;
-const MAX_BOTS = 2;
-const BOT_UPDATE_INTERVAL = 300000; // 300 seconds
-let lastBotUpdate = performance.now();
-let nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
-
 // Variables for ships and physics
 let playerShip;
 let rotationAxes;
@@ -208,9 +198,9 @@ function createBot() {
     
     // Convert spherical coordinates to Cartesian with radius 40
     const position = new THREE.Vector3(
-        40 * Math.sin(theta) * Math.cos(phi), // x
-        40 * Math.cos(theta),                 // y
-        40 * Math.sin(theta) * Math.sin(phi)  // z
+        32 * Math.sin(theta) * Math.cos(phi), // x
+        32 * Math.cos(theta),                 // y
+        32 * Math.sin(theta) * Math.sin(phi)  // z
     );
     const bot = new Bot(scene, position);
     bots.push(bot);
@@ -229,7 +219,7 @@ function createInitialBots() {
     allShips = [rotationAxes]; // Reset to just player ship
     
     // Create new set of bots
-    const initialBotCount = Math.floor(Math.random() * (MAX_BOTS - MIN_BOTS + 1)) + MIN_BOTS;
+    const initialBotCount = levelManager.getNumberOfBots();
     for (let i = 0; i < initialBotCount; i++) {
         createBot();
     }
@@ -353,43 +343,6 @@ function animate() {
                         physics1.checkCollision(ship1, physics2, ship2);
                     }
                 }
-            }
-            
-            // Check if it's time to update bot count
-            if (currentTime >= nextBotUpdateTime) {
-                // Randomly add or remove a bot to maintain MIN_BOTS to MAX_BOTS
-                const totalBots = bots.length;
-                
-                if (totalBots < MIN_BOTS) {
-                    // Add a bot if below minimum
-                    createBot();
-                } else if (totalBots > MAX_BOTS) {
-                    // Remove a random bot if above maximum
-                    const indexToRemove = Math.floor(Math.random() * bots.length);
-                    const botToRemove = bots[indexToRemove];
-                    scene.remove(botToRemove.rotationAxes);
-                    bots.splice(indexToRemove, 1);
-                    const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
-                    if (shipIndex > -1) {
-                        allShips.splice(shipIndex, 1);
-                    }
-                } else {
-                    // Randomly add or remove a bot
-                    if (Math.random() < 0.5 && totalBots < MAX_BOTS) {
-                        createBot();
-                    } else if (totalBots > MIN_BOTS) {
-                        const indexToRemove = Math.floor(Math.random() * bots.length);
-                        const botToRemove = bots[indexToRemove];
-                        scene.remove(botToRemove.rotationAxes);
-                        bots.splice(indexToRemove, 1);
-                        const shipIndex = allShips.indexOf(botToRemove.rotationAxes);
-                        if (shipIndex > -1) {
-                            allShips.splice(shipIndex, 1);
-                        }
-                    }
-                }
-                
-                nextBotUpdateTime = currentTime + BOT_UPDATE_INTERVAL;
             }
         }
     }
