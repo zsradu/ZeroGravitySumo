@@ -1,7 +1,10 @@
-// Initialize Three.js scene, camera, and renderer
+// import { initEffectsManager, getEffectsManager } from './effects.js';
+
+// Initialize Three.js scene, camera, renderer and effects manager
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
+const effectsManager = new ParticleSystem(scene);
 
 // Set renderer size and add to document
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -395,6 +398,9 @@ function animate() {
     // Update camera position and rotation
     updateCamera();
     
+    // Update effects
+    effectsManager.update();
+
     // Render the scene
     renderer.render(scene, camera);
 }

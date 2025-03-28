@@ -1,5 +1,5 @@
 // Physics constants
-const NORMAL_THRUST = 15.0;  // units/s²
+const NORMAL_THRUST = 12.0;  // units/s²
 const BOOST_THRUST = 40.0;   // units/s²
 const DAMPING = 0.99;       // per frame
 const TIME_STEP = 1/60;     // 60 FPS
@@ -10,13 +10,16 @@ const SAFE_ZONE_RADIUS = 50; // Arena boundary radius
 
 class Physics {
     constructor() {
-        this.velocity = new THREE.Vector3(0, 0, 0);
+        this.velocity = new THREE.Vector3();
+        this.acceleration = 10;
+        this.drag = 0.3;
+        this.boostMultiplier = 2.5;
+        this.boostCooldown = 0;
+        this.BOOST_COOLDOWN = 2000; // 2 seconds
         this.isThrusting = false;
         this.isBoosting = false;
+        this.thrusterEffect = null;
         this.boostTimeLeft = 0;
-        this.boostCooldown = 0;
-        this.BOOST_DURATION = 2;     // seconds
-        this.BOOST_COOLDOWN = 5;    // seconds
         this.shakeTimeLeft = 0;      // Camera shake timer
         this.lastCollisionTime = 0;  // Prevent multiple collisions in same frame
         this.isOutOfBounds = false;  // Track if ship is out of bounds
@@ -24,28 +27,56 @@ class Physics {
 
     // Update physics for an object
     update(object) {
-        // Apply thrust if active
+        const now = performance.now();
+
+        // Update boost cooldown
+        if (this.boostCooldown > 0) {
+            this.boostCooldown = Math.max(0, this.boostCooldown - 16.67);
+            if (this.boostCooldown <= 0) {
+                this.isBoosting = false;
+                // Update thruster effect if still thrusting
+                if (this.isThrusting) {
+                    if (this.thrusterEffect) {
+                        this.thrusterEffect.group.parent.remove(this.thrusterEffect.group);
+                    }
+                    this.thrusterEffect = effectsManager.createThrusterEffect(this, false);
+                }
+            }
+        }
+
+        // Apply thrust
         if (this.isThrusting) {
-            // Get the object's forward direction (negative z-axis in local space)
+            // Get the object's forward direction
             const forward = new THREE.Vector3(0, 0, -1);
             forward.applyQuaternion(object.quaternion);
             
-            // Calculate thrust force
-            const thrustForce = this.isBoosting ? BOOST_THRUST : NORMAL_THRUST;
-            
-            // Apply thrust to velocity
-            this.velocity.addScaledVector(forward, thrustForce * TIME_STEP);
+            // Apply acceleration in that direction
+            const thrustPower = this.isBoosting ? this.acceleration * this.boostMultiplier : this.acceleration;
+            this.velocity.add(forward.multiplyScalar(thrustPower * (1/60)));
+
+            // Update thruster effect
+            if (this.thrusterEffect) {
+                // Ensure thruster is attached to object
+                if (!this.thrusterEffect.group.parent) {
+                    object.add(this.thrusterEffect.group);
+                }
+                this.thrusterEffect.update(now);
+            }
         }
 
-        // Update boost status
-        if (this.isBoosting) {
-            this.boostTimeLeft -= TIME_STEP;
-            if (this.boostTimeLeft <= 0) {
-                this.isBoosting = false;
-                this.boostCooldown = this.BOOST_COOLDOWN;
-            }
-        } else if (this.boostCooldown > 0) {
-            this.boostCooldown -= TIME_STEP;
+        // Apply drag
+        this.velocity.multiplyScalar(1 - this.drag * (1/60));
+
+        // Update position
+        object.position.add(this.velocity.clone().multiplyScalar(1/60));
+
+        // Check if out of bounds
+        const distance = object.position.length();
+        const inBounds = distance <= 50;
+
+        // If out of bounds, trigger explosion effect
+        if (!inBounds) {
+            effectsManager.createExplosion(object.position.clone());
         }
 
         // Update shake timer
@@ -53,17 +84,10 @@ class Physics {
             this.shakeTimeLeft -= TIME_STEP;
         }
 
-        // Apply velocity to position
-        object.position.addScaledVector(this.velocity, TIME_STEP);
-
-        // Apply damping
-        this.velocity.multiplyScalar(DAMPING);
-
         // Check if ship is outside safe zone
-        const distanceFromCenter = object.position.length();
-        this.isOutOfBounds = distanceFromCenter > SAFE_ZONE_RADIUS;
+        this.isOutOfBounds = distance > SAFE_ZONE_RADIUS;
 
-        return !this.isOutOfBounds; // Return false if ship should be removed
+        return inBounds;
     }
 
     // Check for collision with another physics object
@@ -143,18 +167,36 @@ class Physics {
     // Start thrusting
     startThrust() {
         this.isThrusting = true;
+        // Remove any existing thruster effect
+        if (this.thrusterEffect && this.thrusterEffect.group.parent) {
+            this.thrusterEffect.group.parent.remove(this.thrusterEffect.group);
+        }
+        // Create new thruster effect
+        this.thrusterEffect = effectsManager.createThrusterEffect(this, this.isBoosting);
     }
 
     // Stop thrusting
     stopThrust() {
         this.isThrusting = false;
+        // Remove thruster effect
+        if (this.thrusterEffect && this.thrusterEffect.group.parent) {
+            this.thrusterEffect.group.parent.remove(this.thrusterEffect.group);
+            this.thrusterEffect = null;
+        }
     }
 
     // Attempt to activate boost
     tryBoost() {
-        if (!this.isBoosting && this.boostCooldown <= 0) {
+        if (this.boostCooldown <= 0) {
             this.isBoosting = true;
-            this.boostTimeLeft = this.BOOST_DURATION;
+            this.boostCooldown = this.BOOST_COOLDOWN;
+            // Update thruster effect if thrusting
+            if (this.isThrusting) {
+                if (this.thrusterEffect && this.thrusterEffect.group.parent) {
+                    this.thrusterEffect.group.parent.remove(this.thrusterEffect.group);
+                }
+                this.thrusterEffect = effectsManager.createThrusterEffect(this, true);
+            }
             return true;
         }
         return false;
