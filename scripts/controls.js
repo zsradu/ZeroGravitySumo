@@ -18,6 +18,7 @@ class VirtualJoystick {
         this.touchStart = { x: 0, y: 0 };
         this.active = false;
         this.deadZoneRadius = 0.05; // 5% of total range
+        this.touchId = null;
         
         // Create joystick elements
         this.base = document.createElement('div');
@@ -33,14 +34,17 @@ class VirtualJoystick {
         this.handleTouchEnd = this.handleTouchEnd.bind(this);
         
         // Add event listeners
-        this.base.addEventListener('touchstart', this.handleTouchStart);
-        document.addEventListener('touchmove', this.handleTouchMove);
+        this.base.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', this.handleTouchMove, { passive: false });
         document.addEventListener('touchend', this.handleTouchEnd);
+        document.addEventListener('touchcancel', this.handleTouchEnd);
     }
     
     handleTouchStart(event) {
+        if (this.active) return; // Already tracking a touch
         event.preventDefault();
         const touch = event.touches[0];
+        this.touchId = touch.identifier;
         const rect = this.base.getBoundingClientRect();
         this.touchStart.x = touch.clientX - rect.left;
         this.touchStart.y = touch.clientY - rect.top;
@@ -51,15 +55,24 @@ class VirtualJoystick {
     handleTouchMove(event) {
         if (!this.active) return;
         event.preventDefault();
-        const touch = event.touches[0];
+        
+        // Find our tracked touch
+        const touch = Array.from(event.touches).find(t => t.identifier === this.touchId);
+        if (!touch) return;
+        
         const rect = this.base.getBoundingClientRect();
         this.updateKnobPosition(touch.clientX - rect.left, touch.clientY - rect.top);
     }
     
-    handleTouchEnd() {
-        this.active = false;
-        this.position = { x: 0, y: 0 };
-        this.knob.style.transform = 'translate(-50%, -50%)';
+    handleTouchEnd(event) {
+        // Check if our tracked touch ended
+        const activeTouch = Array.from(event.touches).find(t => t.identifier === this.touchId);
+        if (!activeTouch) {
+            this.active = false;
+            this.touchId = null;
+            this.position = { x: 0, y: 0 };
+            this.knob.style.transform = 'translate(-50%, -50%)';
+        }
     }
     
     updateKnobPosition(x, y) {
@@ -103,6 +116,7 @@ class TouchButton {
         this.element.textContent = label;
         this.element.style.opacity = '0.7';
         this.active = false;
+        this.touchId = null;
         
         // Position the button
         if (position === 'thrust') {
@@ -116,13 +130,26 @@ class TouchButton {
         
         // Add event listeners
         this.element.addEventListener('touchstart', (e) => {
+            if (this.active) return; // Already being pressed
             e.preventDefault();
+            this.touchId = e.touches[0].identifier;
             this.active = true;
             this.element.classList.add('active');
+        }, { passive: false });
+        
+        this.element.addEventListener('touchend', (e) => {
+            // Check if our tracked touch ended
+            const activeTouch = Array.from(e.touches).find(t => t.identifier === this.touchId);
+            if (!activeTouch) {
+                this.active = false;
+                this.touchId = null;
+                this.element.classList.remove('active');
+            }
         });
         
-        this.element.addEventListener('touchend', () => {
+        this.element.addEventListener('touchcancel', () => {
             this.active = false;
+            this.touchId = null;
             this.element.classList.remove('active');
         });
     }
@@ -183,15 +210,15 @@ class Controls {
         if (this.isMobile) {
             const joystickInput = this.joystick.getInput();
             return {
-                x: -joystickInput.y * 0.5, // Pitch (up/down)
-                y: -joystickInput.x * 0.5 // Yaw (left/right)
+                x: -joystickInput.y, // Pitch (up/down)
+                y: -joystickInput.x // Yaw (left/right)
             };
         } else {
             return {
-                x: (this.keyState.ArrowUp || this.keyState.w ? -1 : 0) + 
-                   (this.keyState.ArrowDown || this.keyState.s ? 1 : 0),
-                y: (this.keyState.ArrowLeft || this.keyState.a ? 1 : 0) + 
-                   (this.keyState.ArrowRight || this.keyState.d ? -1 : 0)
+                x: (this.keyState.ArrowUp || this.keyState.w ? -0.65 : 0) + 
+                   (this.keyState.ArrowDown || this.keyState.s ? 0.65 : 0),
+                y: (this.keyState.ArrowLeft || this.keyState.a ? 0.65 : 0) + 
+                   (this.keyState.ArrowRight || this.keyState.d ? -0.65 : 0)
             };
         }
     }

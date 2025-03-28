@@ -40,6 +40,10 @@ class LevelManager {
         return Math.max(500, duration); // Minimum stop duration of 0.5 seconds
     }
 
+    getNumberOfBots() {
+        return this.currentLevel;
+    }
+
     handleGameWin() {
         this.currentLevel++;
         this.updateHUD();
