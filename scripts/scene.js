@@ -186,7 +186,7 @@ scene.add(stars);
 
 // Bot management constants
 const MIN_BOTS = 2;
-const MAX_BOTS = 4;
+const MAX_BOTS = 2;
 const BOT_UPDATE_INTERVAL = 300000; // 300 seconds
 let lastBotUpdate = performance.now();
 let nextBotUpdateTime = performance.now() + BOT_UPDATE_INTERVAL;
